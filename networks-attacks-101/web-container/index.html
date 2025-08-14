@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ProjectX Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 40px;
+    }
+    h1 {
+      color: #2a7ae2;
+    }
+    .login-box, .content-box {
+      background: white;
+      padding: 20px;
+      max-width: 400px;
+      margin: auto;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #2a7ae2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-box" id="login-box">
+  <h1>Login to ProjectX</h1>
+  <input type="text" id="username" placeholder="Email or Username">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p class="error" id="error-msg"></p>
+</div>
+
+<div class="content-box" id="content-box" style="display:none;">
+  <h1>Welcome to ProjectX Internal Portal</h1>
+  <p>Here's the latest update on what's happening in ProjectX:</p>
+  <ul>
+    <li>Security audit scheduled for next week.</li>
+    <li>New feature rollout planned for June 30.</li>
+    <li>Remember to update your credentials regularly!</li>
+  </ul>
+</div>
+
+<script>
+  const users = {
+    'Administrator': 'admin',
+    'johnd@corp.project-x-dc.com': 'smile',
+    'janed@corp.project-x-dc.com': '@password123!'
+  };
+
+  function login() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const errorMsg = document.getElementById('error-msg');
+
+    if (users[username] && users[username] === password) {
+      document.getElementById('login-box').style.display = 'none';
+      document.getElementById('content-box').style.display = 'block';
+    } else {
+      errorMsg.textContent = 'Invalid username or password.';
+    }
+  }
+</script>
+
+</body>
+</html>
