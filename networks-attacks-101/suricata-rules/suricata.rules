@@ -1,0 +1,24 @@
+# Block all ICMP Traffic (Test rule on project-x-sec-work)
+
+drop icmp any any -> any any (msg:"ICMP Request Blocked"; sid:2; rev:1;)
+
+# L2 Monitoring: Allow listing only real pfSense MAC address
+
+drop ether any any -> any any (msg:"DROP: ARP spoofing - fake gateway"; \
+  ether proto 0x0806; \
+  content:"|00 02|"; offset:6; depth:2; \
+  content:"|C0 A8 0F 02|"; offset:28; depth:4; \
+  content:!"|08:00:27:66:28:19|"; offset:22; depth:6; \
+  sid:1000012; rev:1;)
+
+# L3/4 Monitoring: Drop all IP traffic on pfSuricata
+
+drop ip any any -> 10.0.5.10 any (msg:"DROP: IP Packets Going to corp-svr"; sid:1000003; rev:1;)
+
+# L3/4 Monitoring: Drop all IP packets based on count on pfSuricata
+
+drop ip any any -> 10.0.5.10 any (msg:"DROP: DoS - Too many packets from attacker"; threshold:type both, track by_src, count 100, seconds 1; sid:1000006; rev:1;)\
+
+# L7 Monitoring: Allowlisting IP Address on pfSuricata
+
+drop tcp ![192.168.15.5] any -> 10.0.5.10 21 (msg:"DROP: Unauthorized FTP access attempt"; sid:1000007; rev:1;)
