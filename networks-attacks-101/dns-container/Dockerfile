@@ -1,14 +1,18 @@
+# Pull Ubuntu 22.04 Base
 FROM ubuntu:22.04
-
-ENV DEBIAN_FRONTEND=noninteractive
 
 # Install BIND9 and utilities
 RUN apt-get update && \
-    apt-get install -y bind9 bind9utils bind9-doc dnsutils net-tools nano iputils-ping openssh-server && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y bind9 bind9utils bind9-doc dnsutils net-tools nano iputils-ping openssh-server && \
     apt-get clean
 
-# Create directories for zone files
+# Create necessary directories for zone files
 RUN mkdir -p /etc/bind/zones
 
-# Run named in the foreground so the container stays alive
-CMD ["named", "-g", "-c", "/etc/bind/named.conf"]
+# Ensure configuration files are created
+RUN test -f /etc/bind/named.conf || cp /usr/share/doc/bind9/examples/named.conf /etc/bind/named.conf && \
+    test -f /etc/bind/named.conf.options || cp /usr/share/doc/bind9/examples/named.conf.options /etc/bind/named.conf.options && \
+    test -f /etc/bind/named.conf.local || cp /usr/share/doc/bind9/examples/named.conf.local /etc/bind/named.conf.local
+
+# Default command
+CMD ["/bin/bash"]
