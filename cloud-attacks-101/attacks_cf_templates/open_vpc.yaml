@@ -1,0 +1,303 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Deliberately vulnerable VPC lab: open security groups, permissive NACLs, and public EC2 instance
+  with high-value ports exposed (for educational testing).
+
+Parameters:
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: EC2 Key Pair name for SSH access
+
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    Description: EC2 instance type
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Description: Latest Amazon Linux 2023 AMI (via SSM public parameter)
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
+
+Resources:
+  # ----------------------------
+  # VPC and Networking Components
+  # ----------------------------
+  VulnerableVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: delete-me-vuln-vpc
+        - Key: Purpose
+          Value: SecurityTraining
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: delete-me-vuln-vpc-igw
+        - Key: Purpose
+          Value: SecurityTraining
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VulnerableVPC
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VulnerableVPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: delete-me-vuln-vpc-public-subnet
+        - Key: Purpose
+          Value: SecurityTraining
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VulnerableVPC
+      Tags:
+        - Key: Name
+          Value: delete-me-vuln-vpc-public-routes
+        - Key: Purpose
+          Value: SecurityTraining
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # ----------------------------
+  # VULNERABLE: Open Security Group
+  # ----------------------------
+  OpenSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: delete-me-vuln-vpc-open-sg
+      GroupDescription: VULNERABLE - Open security group allowing all traffic from internet
+      VpcId: !Ref VulnerableVPC
+      SecurityGroupIngress:
+        # SSH - port 22
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: SSH access from anywhere (VULNERABLE)
+        # RDP - port 3389
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 0.0.0.0/0
+          Description: RDP access from anywhere (VULNERABLE)
+        # HTTP - port 80
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP access from anywhere (VULNERABLE)
+        # HTTPS - port 443
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS access from anywhere (VULNERABLE)
+        # MySQL - port 3306
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
+          Description: MySQL access from anywhere (VULNERABLE)
+        # PostgreSQL - port 5432
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0
+          Description: PostgreSQL access from anywhere (VULNERABLE)
+        # SQL Server - port 1433
+        - IpProtocol: tcp
+          FromPort: 1433
+          ToPort: 1433
+          CidrIp: 0.0.0.0/0
+          Description: SQL Server access from anywhere (VULNERABLE)
+        # VNC - port 5900
+        - IpProtocol: tcp
+          FromPort: 5900
+          ToPort: 5900
+          CidrIp: 0.0.0.0/0
+          Description: VNC access from anywhere (VULNERABLE)
+        # WinRM HTTP - port 5985
+        - IpProtocol: tcp
+          FromPort: 5985
+          ToPort: 5985
+          CidrIp: 0.0.0.0/0
+          Description: WinRM HTTP access from anywhere (VULNERABLE)
+        # WinRM HTTPS - port 5986
+        - IpProtocol: tcp
+          FromPort: 5986
+          ToPort: 5986
+          CidrIp: 0.0.0.0/0
+          Description: WinRM HTTPS access from anywhere (VULNERABLE)
+      SecurityGroupEgress:
+        # Allow all outbound traffic
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: delete-me-vuln-vpc-open-sg
+        - Key: Purpose
+          Value: SecurityTraining
+
+  # ----------------------------
+  # VULNERABLE: Permissive Network ACL
+  # ----------------------------
+  PermissiveNetworkACL:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref VulnerableVPC
+      Tags:
+        - Key: Name
+          Value: delete-me-vuln-vpc-permissive-nacl
+        - Key: Purpose
+          Value: SecurityTraining
+
+  # Inbound rules - allow all traffic
+  NetworkACLInboundRule100:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PermissiveNetworkACL
+      RuleNumber: 100
+      Protocol: -1
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+
+  # Outbound rules - allow all traffic
+  NetworkACLOutboundRule100:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PermissiveNetworkACL
+      RuleNumber: 100
+      Protocol: -1
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+
+  # Associate NACL with public subnet
+  PublicSubnetNetworkACLAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      NetworkAclId: !Ref PermissiveNetworkACL
+
+  # ----------------------------
+  # EC2 Instance
+  # ----------------------------
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPairName
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref OpenSecurityGroup
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          yum update -y
+          # Install simple HTTP server for testing
+          yum install -y httpd
+          systemctl start httpd
+          systemctl enable httpd
+          echo "<h1>Vulnerable VPC - Open Security Group Test</h1>" > /var/www/html/index.html
+      Tags:
+        - Key: Name
+          Value: delete-me-vuln-vpc-ec2-instance
+        - Key: Purpose
+          Value: SecurityTraining
+
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: delete-me-vuln-vpc-eip
+        - Key: Purpose
+          Value: SecurityTraining
+
+  ElasticIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref EC2Instance
+      EIP: !Ref ElasticIP
+
+Outputs:
+  VpcId:
+    Description: VPC ID of the vulnerable VPC
+    Value: !Ref VulnerableVPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcId'
+
+  PublicSubnetId:
+    Description: Public Subnet ID
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnetId'
+
+  SecurityGroupId:
+    Description: Security Group ID (open to all traffic)
+    Value: !Ref OpenSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-SecurityGroupId'
+
+  NetworkAclId:
+    Description: Network ACL ID (permissive rules)
+    Value: !Ref PermissiveNetworkACL
+    Export:
+      Name: !Sub '${AWS::StackName}-NetworkAclId'
+
+  EC2InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref EC2Instance
+    Export:
+      Name: !Sub '${AWS::StackName}-EC2InstanceId'
+
+  EC2PublicIP:
+    Description: Public IP address of the EC2 instance
+    Value: !Ref ElasticIP
+    Export:
+      Name: !Sub '${AWS::StackName}-EC2PublicIP'
+
+  SSHAccess:
+    Description: SSH access command
+    Value: !Sub 'ssh -i ~/.ssh/${KeyPairName}.pem ec2-user@${ElasticIP}'
+
+  VPCName:
+    Description: Name of the vulnerable VPC
+    Value: delete-me-vuln-vpc
