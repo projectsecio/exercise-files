@@ -1,0 +1,33 @@
+{
+    "size": 0,
+    "query": {
+        "bool": {
+            "filter": [
+                {
+                    "term": {
+                        "data.aws.eventSource": {
+                            "value": "s3.amazonaws.com",
+                            "boost": 1
+                        }
+                    }
+                },
+                {
+                    "term": {
+                        "data.aws.eventName": {
+                            "value": "GetObject",
+                            "boost": 1
+                        }
+                    }
+                },
+                {
+                    "query_string": {
+                        "query": "data.aws.userIdentity.type:Anonymous OR data.aws.userIdentity.principalId:Anonymous",
+                        "boost": 1
+                    }
+                }
+            ],
+            "adjust_pure_negative": true,
+            "boost": 1
+        }
+    }
+}

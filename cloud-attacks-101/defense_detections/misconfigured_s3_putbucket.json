@@ -1,0 +1,27 @@
+{
+    "size": 0,
+    "query": {
+        "bool": {
+            "filter": [
+                {
+                    "term": {
+                        "data.aws.eventSource": {
+                            "value": "s3.amazonaws.com",
+                            "boost": 1
+                        }
+                    }
+                },
+                {
+                    "term": {
+                        "data.aws.eventName": {
+                            "value": "PutBucketPolicy",
+                            "boost": 1
+                        }
+                    }
+                }
+            ],
+            "adjust_pure_negative": true,
+            "boost": 1
+        }
+    }
+}

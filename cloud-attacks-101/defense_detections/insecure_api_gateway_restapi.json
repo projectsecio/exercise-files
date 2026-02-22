@@ -1,0 +1,25 @@
+{
+    "size": 0,
+    "query": {
+        "bool": {
+            "filter": [
+                {
+                    "term": {
+                        "data.aws.eventSource": {
+                            "value": "apigateway.amazonaws.com",
+                            "boost": 1
+                        }
+                    }
+                },
+                {
+                    "terms": {
+                        "data.aws.eventName": ["PutRestApi", "UpdateRestApiPolicy"],
+                        "boost": 1
+                    }
+                }
+            ],
+            "adjust_pure_negative": true,
+            "boost": 1
+        }
+    }
+}
