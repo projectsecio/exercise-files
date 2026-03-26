@@ -1,49 +1,119 @@
 import json
 import logging
+import os
+import importlib
 from datetime import datetime
+from typing import Any, Optional
 
-# from rss_feed import fetch_feed as fetch_rss_feed
-# from abuseipdb_feed import fetch_feed as fetch_abuseipdb_feed
 from db import store_panel_feed
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+DEFAULT_PANEL_KEY = "security_news_rss"
+
+# Map panel keys (what event/env selects) to the corresponding module file (without .py).
+# Add new panels here as you create new *feed.py modules in the same folder.
+PANEL_MODULES = {
+    "security_news_rss": "rss_feed",
+    "top_100_domains": "top_100_domains_feed",
+    "top_ips": "top_ips_feed",
+    "top_10_countries_by_ip": "top_10_countries_by_ip_feed",
+    "top_malware_hashes": "top_malware_hashes_feed",
+    "top_iocs": "top_iocs_feed",
+}
+
+def _default_build_payload(items: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "items": items,
+        "items_count": len(items),
+        "fetched_at": datetime.utcnow().isoformat(),
+    }
+
+def _resolve_panel_key(panel_selection: Optional[str]) -> str:
+    if not panel_selection:
+        return DEFAULT_PANEL_KEY
+
+    if panel_selection in PANEL_MODULES:
+        return panel_selection
+
+    # Allow callers to pass the actual stored panel name (i.e., module.PANEL_NAME)
+    # by trying each registered module.
+    for panel_key, module_name in PANEL_MODULES.items():
+        try:
+            module = importlib.import_module(module_name)
+        except Exception:
+            continue
+        if getattr(module, "PANEL_NAME", None) == panel_selection:
+            return panel_key
+
+    raise ValueError(
+        f"Unknown panel selection '{panel_selection}'. "
+        f"Set event['panel_key'] to one of: {sorted(PANEL_MODULES.keys())}"
+    )
+
+def _load_panel_module(panel_key: str):
+    module_name = PANEL_MODULES[panel_key]
+    return importlib.import_module(module_name)
+
+def run_panel(panel_selection: Optional[str], max_results: int = 5) -> dict[str, Any]:
+    panel_key = _resolve_panel_key(panel_selection)
+    module = _load_panel_module(panel_key)
+
+    panel_name = getattr(module, "PANEL_NAME", panel_key)
+    source_feed = getattr(module, "SOURCE_FEED_URL", "")
+
+    fetch_fn = getattr(module, "fetch_items", None) or getattr(module, "fetch_rss_feed", None)
+    if not callable(fetch_fn):
+        raise AttributeError(
+            f"Panel module '{module.__name__}' must export fetch_items(max_results) (or fetch_rss_feed)."
+        )
+
+    items = fetch_fn(max_results=max_results)
+
+    build_payload_fn = getattr(module, "build_payload", None)
+    if callable(build_payload_fn):
+        payload_data = build_payload_fn(items)
+    else:
+        payload_data = _default_build_payload(items)
+
+    record_id = store_panel_feed(
+        panel_name=panel_name,
+        source_feed=source_feed,
+        payload_data=payload_data,
+    )
+
+    return {
+        "record_id": record_id,
+        "panel_name": panel_name,
+        "source_feed": source_feed,
+        "items_stored": len(items),
+    }
+
 def lambda_handler(event, context):
     try:
-        feed_result = fetch_rss_feed(max_results=5)
+        panel_selection = None
+        max_results = 5
 
-        if not isinstance(feed_result, dict):
-            raise TypeError("Feed must return a dictionary")
+        if isinstance(event, dict):
+            panel_selection = (
+                event.get("panel_key")
+                or event.get("panel_type")
+                or event.get("panel_name")
+            )
+            if event.get("max_results") is not None:
+                max_results = int(event["max_results"])
 
-        required_keys = ["panel_name", "source_feed", "items"]
-        for key in required_keys:
-            if key not in feed_result:
-                raise KeyError(f"Feed result missing required key: {key}")
-
-        if not isinstance(feed_result["items"], list):
-            raise TypeError("'items' must be a list")
-
-        payload = {
-            "items": feed_result["items"],
-            "items_count": len(feed_result["items"]),
-            "fetched_at": datetime.utcnow().isoformat()
-        }
-
-        record_id = store_panel_feed(
-            panel_name=feed_result["panel_name"],
-            source_feed=feed_result["source_feed"],
-            payload_data=payload
-        )
+        result = run_panel(panel_selection, max_results=max_results)
 
         return {
             "statusCode": 200,
             "body": json.dumps({
                 "status": "success",
-                "record_id": record_id,
-                "panel_name": feed_result["panel_name"],
-                "source_feed": feed_result["source_feed"],
-                "items_stored": len(feed_result["items"])
+                "record_id": result["record_id"],
+                "panel_name": result["panel_name"],
+                "source_feed": result["source_feed"],
+                "items_stored": result["items_stored"]
             })
         }
 
@@ -56,3 +126,13 @@ def lambda_handler(event, context):
                 "error": str(e)
             })
         }
+
+def main(max_results: int = 5):
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    panel_selection = os.environ.get("PANEL_KEY") or os.environ.get("PANEL_NAME") or DEFAULT_PANEL_KEY
+    result = run_panel(panel_selection, max_results=max_results)
+    print(f"OK: stored {result['items_stored']} items (record_id={result['record_id']})")
+    return result
+
+if __name__ == "__main__":
+    main()

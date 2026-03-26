@@ -40,6 +40,24 @@ def get_db_connection():
             else:
                 raise
 
+def test_db_connection():
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        row = cursor.fetchone()
+        if row is None or row[0] != 1:
+            raise RuntimeError("Unexpected SELECT 1 result")
+        logger.info("Database connection test succeeded")
+        return True
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 def store_panel_feed(panel_name, source_feed, payload_data):
     conn = None
     cursor = None
@@ -126,3 +144,11 @@ def cleanup_old_data(retention_days, panel_name=None):
             cursor.close()
         if conn:
             conn.close()
+
+def main():
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    test_db_connection()
+    print("OK: database connection test passed")
+
+if __name__ == "__main__":
+    main()
