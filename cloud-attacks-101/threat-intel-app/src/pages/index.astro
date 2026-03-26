@@ -1,0 +1,80 @@
+---
+import '../styles/global.css';
+import { getDashboardPanels } from '../lib/db';
+
+const panels = await getDashboardPanels();
+
+const panelTitles: Record<string, string> = {
+	security_news_rss: 'Security News RSS',
+	top_100_domains: 'Top 100 Domains',
+	top_ips: 'Top IPs',
+	top_10_countries_by_ip: 'Top 10 Countries by IP',
+	top_malware_hashes: 'Top Malware Hashes',
+	top_iocs: 'Top IOCs',
+};
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>ThreatIntel</title>
+	</head>
+	<body class="min-h-screen bg-slate-950 text-slate-100">
+		<main class="mx-auto max-w-7xl p-6">
+			<h1 class="text-3xl font-bold">Threat Intelligence Dashboard</h1>
+			<p class="mt-2 text-sm text-slate-400">Six panel overview from latest stored feed snapshots.</p>
+
+			<section class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+				{
+					panels.map((panel) => (
+						<article class="rounded-lg border border-slate-800 bg-slate-900 p-4">
+							<div class="mb-3 flex items-start justify-between gap-3">
+								<h2 class="text-lg font-semibold">
+									{panelTitles[panel.panelName] ?? panel.panelName}
+								</h2>
+								<span class="rounded bg-slate-800 px-2 py-1 text-xs text-slate-300">
+									{panel.items.length} items
+								</span>
+							</div>
+
+							<p class="mb-3 text-xs text-slate-500">
+								Source: {panel.sourceFeed || 'placeholder'}
+							</p>
+
+							{panel.items.length === 0 ? (
+								<p class="text-sm text-slate-400">No items yet for this panel.</p>
+							) : panel.panelName === 'security_news_rss' ? (
+								<ul class="space-y-2">
+									{panel.items.map((item) => (
+										<li class="text-sm">
+											<a
+												class="text-blue-300 hover:text-blue-200 hover:underline"
+												href={item.url}
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												{item.title || 'Untitled article'}
+											</a>
+											{item.published && (
+												<p class="mt-1 text-xs text-slate-500">{item.published}</p>
+											)}
+										</li>
+									))}
+								</ul>
+							) : (
+								<ul class="space-y-2">
+									{panel.items.map((item) => (
+										<li class="rounded bg-slate-800/60 p-2 text-sm text-slate-300">
+											{item.title || item.url || 'Placeholder item'}
+										</li>
+									))}
+								</ul>
+							)}
+						</article>
+					))
+				}
+			</section>
+		</main>
+	</body>
+</html>
