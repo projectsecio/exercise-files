@@ -1,11 +1,29 @@
 import { Pool } from "pg";
 
+function envString(name: string): string {
+  const fromMeta = (import.meta.env as Record<string, string | undefined>)[name];
+  const fromProcess =
+    typeof process !== "undefined" ? process.env[name] : undefined;
+  const value = fromMeta ?? fromProcess;
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(
+      `${name} must be a non-empty string. Set it in the project root .env or the shell ` +
+        `(e.g. export DB_PASSWORD=...). Missing values trigger SASL: "client password must be a string".`
+    );
+  }
+  return value;
+}
+
 const pool = new Pool({
-  host: import.meta.env.DB_HOST,
-  port: Number(import.meta.env.DB_PORT ?? "5432"),
-  database: import.meta.env.DB_NAME,
-  user: import.meta.env.DB_USER,
-  password: import.meta.env.DB_PASSWORD,
+  host: envString("DB_HOST"),
+  port: Number(
+    (import.meta.env as Record<string, string | undefined>).DB_PORT ??
+      (typeof process !== "undefined" ? process.env.DB_PORT : undefined) ??
+      "5432"
+  ),
+  database: envString("DB_NAME"),
+  user: envString("DB_USER"),
+  password: envString("DB_PASSWORD"),
   ssl:
     (import.meta.env.DB_SSLMODE ?? "require") === "disable"
       ? false
