@@ -1,0 +1,7 @@
+# Lambda 2 — VPC; reads S3, writes Postgres (same vars as before for db.py).
+export EC2_ENDPOINT='placeholder'
+export EC2_DB_NAME='projectxdb'
+export EC2_USERNAME='placeholder'
+export EC2_PASSWORD='placeholder'
+export EC2_PORT='5432'
+export EC2_SSLMODE='require'

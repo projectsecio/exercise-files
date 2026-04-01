@@ -1,0 +1,5 @@
+# Shared by Lambda 1 (feeds + S3) and Lambda 2 (Postgres + S3 GetObject).
+# boto3 is already in the Lambda runtime — you can remove the line below to shrink the layer.
+feedparser>=6.0.0
+psycopg2-binary>=2.9.0
+boto3>=1.34.0
