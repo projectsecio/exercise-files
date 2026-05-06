@@ -1,0 +1,6 @@
+# Lambda 1: fetch feeds and write JSON to S3 (no DB).
+export FEED_OUTPUT_BUCKET='placeholder'
+# Optional prefix for keys: becomes {prefix}/{date}/{feed_type}.json
+export S3_KEY_PREFIX=''
+
+export PANEL_KEY='security_news_rss'
