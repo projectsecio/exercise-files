@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { Pool } from "pg";
 
 function envString(name: string): string {
@@ -25,7 +26,9 @@ const pool = new Pool({
   user: envString("DB_USER"),
   password: envString("DB_PASSWORD"),
   ssl:
-    (import.meta.env.DB_SSLMODE ?? "require") === "disable"
+    ((import.meta.env as Record<string, string | undefined>).DB_SSLMODE ??
+      (typeof process !== "undefined" ? process.env.DB_SSLMODE : undefined) ??
+      "require") === "disable"
       ? false
       : { rejectUnauthorized: false },
 });

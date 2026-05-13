@@ -1,0 +1,32 @@
+# Threat intelligence dashboard — systemd (Ubuntu on EC2)
+#
+# Default app directory (match GitHub secret DEPLOY_PATH):
+#   /home/ubuntu/complete-threat-intelligence-dashboard
+#
+# Install once on the server:
+#   sudo cp systemd/threat-intel-dashboard.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now threat-intel-dashboard
+#
+# GitHub Actions deploy-ec2.yml runs: sudo systemctl restart threat-intel-dashboard
+
+[Unit]
+Description=Threat intelligence dashboard (Astro SSR, @astrojs/node)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/complete-threat-intelligence-dashboard
+Environment=NODE_ENV=production
+Environment=HOST=0.0.0.0
+Environment=PORT=4321
+# Leading "-" = ignore if file is missing (first boot before .env exists).
+EnvironmentFile=-/home/ubuntu/complete-threat-intelligence-dashboard/.env
+ExecStart=/usr/bin/node /home/ubuntu/complete-threat-intelligence-dashboard/dist/server/entry.mjs
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
