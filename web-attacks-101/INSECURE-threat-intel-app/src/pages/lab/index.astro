@@ -1,0 +1,39 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+import { ATTACK_SCENARIOS } from '../../lib/attacks';
+---
+
+<AppShell title="Vuln lab · INSECURE Threat Intel" heading="Vulnerability lab">
+  <p class="mb-6 text-sm text-zinc-400">
+    Six deliberately broken features for WA101. Sign in as <code class="text-zinc-300">analyst</code>, then
+    practice each scenario and log results under <a class="text-sky-400 hover:underline" href="/attacks">Attacks</a>.
+  </p>
+
+  <ul class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    {
+      ATTACK_SCENARIOS.map((attack) => (
+        <li class="rounded-2xl border border-amber-500/20 bg-amber-950/10 p-5">
+          <p class="text-[10px] font-medium uppercase tracking-wider text-amber-400/90">
+            {attack.tactic}
+          </p>
+          <h2 class="mt-2 text-base font-medium text-zinc-100">{attack.title}</h2>
+          <p class="mt-2 text-sm text-zinc-400">{attack.summary}</p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <a
+              class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-500/20"
+              href={attack.labPath}
+            >
+              Open lab
+            </a>
+            <a
+              class="rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-sm text-zinc-300 hover:bg-white/[0.08]"
+              href={`/attacks/${attack.slug}`}
+            >
+              Guide
+            </a>
+          </div>
+        </li>
+      ))
+    }
+  </ul>
+</AppShell>

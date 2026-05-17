@@ -1,0 +1,74 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  heading: string;
+  subheading?: string;
+}
+
+const { title, heading, subheading = 'Threat intelligence · local lab' } = Astro.props;
+const username = Astro.locals.username;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+  </head>
+  <body
+    class="min-h-screen bg-zinc-950 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgb(39_39_42_/_0.35),transparent)] text-zinc-100 antialiased"
+  >
+    <main class="mx-auto max-w-7xl px-5 py-10 sm:px-8">
+      <header
+        class="mb-10 flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.06] pb-8"
+      >
+        <div>
+          <p class="text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-500">
+            {subheading}
+          </p>
+          <h1 class="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+            {heading}
+          </h1>
+        </div>
+        <nav class="flex flex-wrap items-center gap-4 text-sm" aria-label="Primary">
+          <a
+            class:list={[
+              'transition-colors',
+              Astro.url.pathname === '/' ? 'text-sky-300' : 'text-zinc-400 hover:text-sky-300',
+            ]}
+            href="/">Dashboard</a
+          >
+          <a
+            class:list={[
+              'transition-colors',
+              Astro.url.pathname.startsWith('/attacks')
+                ? 'text-sky-300'
+                : 'text-zinc-400 hover:text-sky-300',
+            ]}
+            href="/attacks">Attacks</a
+          >
+          <a
+            class:list={[
+              'transition-colors',
+              Astro.url.pathname.startsWith('/lab')
+                ? 'text-amber-300'
+                : 'text-zinc-400 hover:text-amber-300',
+            ]}
+            href="/lab">Vuln lab</a
+          >
+          <span class="text-zinc-600">|</span>
+          <span class="text-zinc-500">{username}</span>
+          <form method="post" action="/api/auth/logout" class="inline">
+            <button
+              type="submit"
+              class="text-zinc-400 transition-colors hover:text-rose-300">Sign out</button
+            >
+          </form>
+        </nav>
+      </header>
+      <slot />
+    </main>
+  </body>
+</html>

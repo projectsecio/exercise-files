@@ -1,0 +1,8 @@
+node_modules
+dist
+.astro
+.git
+.github
+.vscode
+README.md
+docker/postgres_data

@@ -1,0 +1,70 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+import VulnBanner from '../../components/lab/VulnBanner.astro';
+import { addComment, listComments } from '../../lib/lab/xss';
+
+const username = Astro.locals.username ?? 'guest';
+let flash: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const body = String(form.get('body') ?? '').trim();
+  if (body) {
+    await addComment(username, body);
+    flash = 'Comment posted.';
+  }
+}
+
+const comments = await listComments();
+const inputClass =
+  'w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-sm outline-none ring-sky-500/40 focus:ring-2';
+---
+
+<AppShell title="XSS lab" heading="Cross-site scripting lab">
+  <VulnBanner
+    attack="Stored XSS"
+    hint="Comments are rendered with set:html — no encoding or CSP blocking inline script."
+  />
+
+  <section class="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+    <h2 class="text-sm font-medium text-zinc-200">Threat feed discussion</h2>
+    <p class="mt-1 text-xs text-zinc-500">
+      Example payload: <code class="text-zinc-400"
+        >&lt;img src=x onerror=alert('xss')&gt;</code
+      >
+    </p>
+    {flash && (
+      <p class="mt-3 text-sm text-emerald-300">{flash}</p>
+    )}
+    <form class="mt-4 space-y-3" method="post">
+      <textarea
+        class={inputClass}
+        name="body"
+        rows="3"
+        placeholder="Share an IOC observation…"
+        required
+      />
+      <button
+        type="submit"
+        class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+      >
+        Post comment
+      </button>
+    </form>
+
+    <ul class="mt-8 space-y-4">
+      {comments.map((c) => (
+        <li class="rounded-xl border border-white/[0.06] bg-black/20 p-4">
+          <p class="text-xs text-zinc-500">
+            {c.author} · {c.created_at}
+          </p>
+          <div class="prose-invert mt-2 text-sm text-zinc-200" set:html={c.body} />
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <p class="mt-6 text-sm">
+    <a class="text-sky-400 hover:underline" href="/lab">← All lab scenarios</a>
+  </p>
+</AppShell>

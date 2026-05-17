@@ -1,0 +1,110 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+import VulnBanner from '../../components/lab/VulnBanner.astro';
+import { unsafeLabLogin, unsafeProductSearch } from '../../lib/lab/sqli';
+
+const q = Astro.url.searchParams.get('q') ?? '';
+const loginError = Astro.url.searchParams.get('login') === 'fail';
+let loginOk: string | null = null;
+let products: Awaited<ReturnType<typeof unsafeProductSearch>> = [];
+let searchError: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  if (action === 'login') {
+    const username = String(form.get('username') ?? '');
+    const password = String(form.get('password') ?? '');
+    const user = await unsafeLabLogin(username, password);
+    if (user) loginOk = user.username;
+    else return Astro.redirect('/lab/sql-injection?login=fail');
+  }
+}
+
+if (q) {
+  try {
+    products = await unsafeProductSearch(q);
+  } catch (e) {
+    searchError = e instanceof Error ? e.message : 'Query failed';
+  }
+}
+
+const inputClass =
+  'w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-sm outline-none ring-sky-500/40 focus:ring-2';
+---
+
+<AppShell title="SQLi lab" heading="SQL injection lab">
+  <VulnBanner
+    attack="SQL injection"
+    hint="Product search and legacy vendor login build SQL with string concatenation."
+  />
+
+  <section class="mb-8 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+    <h2 class="text-sm font-medium text-zinc-200">Product catalog search</h2>
+    <p class="mt-1 text-xs text-zinc-500">
+      Try <code class="text-zinc-400">' OR '1'='1</code> or <code class="text-zinc-400">%' OR 1=1--</code> in the
+      search box.
+    </p>
+    <form class="mt-4 flex gap-2" method="get">
+      <input class={inputClass} name="q" type="text" value={q} placeholder="Search products…" />
+      <button
+        type="submit"
+        class="shrink-0 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+      >
+        Search
+      </button>
+    </form>
+    {searchError && (
+      <pre class="mt-4 overflow-x-auto rounded-lg border border-rose-500/30 bg-rose-950/30 p-3 text-xs text-rose-200">
+        {searchError}
+      </pre>
+    )}
+    {q && !searchError && (
+      <p class="mt-4 text-xs text-zinc-500">{products.length} row(s)</p>
+    )}
+    {products.length > 0 && (
+      <ul class="mt-3 divide-y divide-white/[0.06] rounded-xl border border-white/[0.06]">
+        {products.map((p) => (
+          <li class="px-4 py-3 text-sm">
+            <span class="font-medium text-zinc-100">{p.name}</span>
+            <span class="ml-2 text-zinc-500">${p.price}</span>
+            <p class="mt-1 text-zinc-400">{p.description}</p>
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
+
+  <section class="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+    <h2 class="text-sm font-medium text-zinc-200">Legacy vendor login (lab table)</h2>
+    <p class="mt-1 text-xs text-zinc-500">
+      Table <code class="text-zinc-400">lab_profiles</code> — valid: analyst / analyst123. Try username{' '}
+      <code class="text-zinc-400">admin'--</code> with any password.
+    </p>
+    {loginOk && (
+      <p class="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
+        Logged in as <strong>{loginOk}</strong> (lab login only — not the dashboard session).
+      </p>
+    )}
+    {loginError && (
+      <p class="mt-3 rounded-lg border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-sm text-rose-200">
+        Login failed.
+      </p>
+    )}
+    <form class="mt-4 max-w-md space-y-3" method="post">
+      <input type="hidden" name="action" value="login" />
+      <input class={inputClass} name="username" placeholder="Username" required />
+      <input class={inputClass} name="password" type="password" placeholder="Password" required />
+      <button
+        type="submit"
+        class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500"
+      >
+        Lab login
+      </button>
+    </form>
+  </section>
+
+  <p class="mt-6 text-sm">
+    <a class="text-sky-400 hover:underline" href="/lab">← All lab scenarios</a>
+  </p>
+</AppShell>

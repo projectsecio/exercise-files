@@ -1,0 +1,62 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+import VulnBanner from '../../components/lab/VulnBanner.astro';
+import { getProfile } from '../../lib/lab/csrf';
+
+const username = Astro.locals.username ?? 'analyst';
+const message = Astro.url.searchParams.get('updated')
+  ? 'Email updated (check profile below).'
+  : Astro.url.searchParams.get('error')
+    ? 'Missing email.'
+    : null;
+
+const profile = await getProfile(username);
+const inputClass =
+  'w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-sm outline-none ring-sky-500/40 focus:ring-2';
+---
+
+<AppShell title="CSRF lab" heading="CSRF lab">
+  <VulnBanner
+    attack="CSRF"
+    hint="Profile email changes accept POST with only your session cookie — no CSRF token."
+  />
+
+  <section class="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+    <h2 class="text-sm font-medium text-zinc-200">Analyst profile</h2>
+    {profile && (
+      <dl class="mt-3 text-sm text-zinc-300">
+        <dt class="text-zinc-500">Display name</dt>
+        <dd class="mb-2">{profile.display_name}</dd>
+        <dt class="text-zinc-500">Email</dt>
+        <dd class="font-mono text-sky-300">{profile.email}</dd>
+      </dl>
+    )}
+    {message && <p class="mt-3 text-sm text-emerald-300">{message}</p>}
+
+    <form class="mt-6 max-w-md space-y-3" method="post" action="/api/lab/profile/email">
+      <label class="block text-xs text-zinc-500" for="email">New email</label>
+      <input class={inputClass} id="email" name="email" type="email" required />
+      <button
+        type="submit"
+        class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+      >
+        Update email
+      </button>
+    </form>
+
+    <div class="mt-8 rounded-xl border border-amber-500/25 bg-amber-950/20 p-4 text-sm text-amber-100">
+      <p class="font-medium">Cross-site PoC</p>
+      <p class="mt-2 text-amber-200/80">
+        While logged in here, open{' '}
+        <a class="underline" href="/lab/csrf-poc.html" target="_blank" rel="noreferrer">
+          /lab/csrf-poc.html
+        </a>{' '}
+        in another tab (or host the same HTML on another origin). It auto-submits a forged email change.
+      </p>
+    </div>
+  </section>
+
+  <p class="mt-6 text-sm">
+    <a class="text-sky-400 hover:underline" href="/lab">← All lab scenarios</a>
+  </p>
+</AppShell>

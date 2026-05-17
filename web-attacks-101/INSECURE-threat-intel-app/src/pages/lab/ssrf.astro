@@ -1,0 +1,66 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+import VulnBanner from '../../components/lab/VulnBanner.astro';
+import { unsafeFetchUrl } from '../../lib/lab/ssrf';
+
+const url = Astro.url.searchParams.get('url') ?? '';
+let result: Awaited<ReturnType<typeof unsafeFetchUrl>> | null = null;
+let fetchError: string | null = null;
+
+if (url) {
+  try {
+    result = await unsafeFetchUrl(url);
+  } catch (e) {
+    fetchError = e instanceof Error ? e.message : 'Fetch failed';
+  }
+}
+
+const inputClass =
+  'w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 font-mono text-sm outline-none ring-sky-500/40 focus:ring-2';
+---
+
+<AppShell title="SSRF lab" heading="SSRF lab">
+  <VulnBanner
+    attack="SSRF"
+    hint="Server fetches any URL you supply — try internal metadata mock below."
+  />
+
+  <section class="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+    <h2 class="text-sm font-medium text-zinc-200">URL preview (threat feed importer)</h2>
+    <p class="mt-1 text-xs text-zinc-500">
+      Inside Docker, try{' '}
+      <code class="text-zinc-400">http://127.0.0.1:4321/api/lab/metadata</code> or{' '}
+      <code class="text-zinc-400">http://app:4321/api/lab/metadata</code>
+    </p>
+    <form class="mt-4 flex flex-col gap-2 sm:flex-row" method="get">
+      <input class={inputClass} name="url" type="text" value={url} placeholder="https://example.com" />
+      <button
+        type="submit"
+        class="shrink-0 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+      >
+        Fetch
+      </button>
+    </form>
+
+    {fetchError && (
+      <pre class="mt-4 overflow-x-auto rounded-lg border border-rose-500/30 bg-rose-950/30 p-3 text-xs text-rose-200">
+        {fetchError}
+      </pre>
+    )}
+
+    {result && (
+      <div class="mt-6 space-y-3">
+        <p class="text-xs text-zinc-500">
+          HTTP {result.status} · {result.contentType}
+        </p>
+        <pre class="max-h-96 overflow-auto rounded-lg border border-white/[0.08] bg-black/40 p-4 text-xs text-zinc-300">
+          {result.body}
+        </pre>
+      </div>
+    )}
+  </section>
+
+  <p class="mt-6 text-sm">
+    <a class="text-sky-400 hover:underline" href="/lab">← All lab scenarios</a>
+  </p>
+</AppShell>

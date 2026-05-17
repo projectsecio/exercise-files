@@ -1,0 +1,65 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+import VulnBanner from '../../components/lab/VulnBanner.astro';
+import { getDocumentById, listDocumentIds } from '../../lib/lab/idor';
+
+const username = Astro.locals.username ?? 'analyst';
+const idParam = Astro.url.searchParams.get('id') ?? '1001';
+const docId = Number.parseInt(idParam, 10);
+const doc = Number.isFinite(docId) ? await getDocumentById(docId) : null;
+const allIds = await listDocumentIds();
+const inputClass =
+  'w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-sm outline-none ring-sky-500/40 focus:ring-2';
+---
+
+<AppShell title="IDOR lab" heading="IDOR lab">
+  <VulnBanner
+    attack="IDOR"
+    hint={`Signed in as ${username}. Document fetch uses id only — no owner check. Your doc is 1001; try 1002 or 1003.`}
+  />
+
+  <section class="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+    <h2 class="text-sm font-medium text-zinc-200">Internal document viewer</h2>
+    <form class="mt-4 flex max-w-xs gap-2" method="get">
+      <input class={inputClass} name="id" type="number" value={idParam} min="1" />
+      <button
+        type="submit"
+        class="shrink-0 rounded-lg bg-sky-600 px-4 py-2 text-sm text-white hover:bg-sky-500"
+      >
+        Open
+      </button>
+    </form>
+
+    <p class="mt-4 text-xs text-zinc-500">Known document IDs (titles only):</p>
+    <ul class="mt-2 text-sm text-zinc-400">
+      {allIds.map((d) => (
+        <li>
+          <a class="text-sky-400 hover:underline" href={`/lab/idor?id=${d.id}`}>
+            {d.id}
+          </a>
+          {' — '}
+          {d.title}
+        </li>
+      ))}
+    </ul>
+
+    {doc ? (
+      <article class="mt-6 rounded-xl border border-white/[0.08] bg-black/25 p-5">
+        {doc.confidential && (
+          <span class="mb-2 inline-block rounded-full border border-rose-500/40 bg-rose-950/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">
+            Confidential
+          </span>
+        )}
+        <h3 class="text-lg font-medium text-zinc-100">{doc.title}</h3>
+        <p class="mt-1 text-xs text-zinc-500">Owner: {doc.owner_username}</p>
+        <p class="mt-4 whitespace-pre-wrap text-sm text-zinc-300">{doc.body}</p>
+      </article>
+    ) : (
+      <p class="mt-6 text-sm text-zinc-500">Document not found.</p>
+    )}
+  </section>
+
+  <p class="mt-6 text-sm">
+    <a class="text-sky-400 hover:underline" href="/lab">← All lab scenarios</a>
+  </p>
+</AppShell>

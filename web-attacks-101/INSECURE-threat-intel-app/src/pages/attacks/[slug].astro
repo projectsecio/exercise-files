@@ -1,0 +1,54 @@
+---
+import { readFile } from 'node:fs/promises';
+import { marked } from 'marked';
+import AppShell from '../../layouts/AppShell.astro';
+import { ATTACK_SCENARIOS } from '../../lib/attacks';
+import { attackGuidePath, attacksGuidesDir, stripFrontmatter } from '../../lib/guides';
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+const attack = ATTACK_SCENARIOS.find((a) => a.slug === slug);
+
+if (!attack) {
+	return Astro.redirect('/attacks');
+}
+
+const guidePath = attackGuidePath(attack.guideFile);
+let html = '';
+let loadError: string | null = null;
+
+try {
+	const markdown = await readFile(guidePath, 'utf-8');
+	html = await marked.parse(stripFrontmatter(markdown));
+} catch (e) {
+	loadError = e instanceof Error ? e.message : String(e);
+}
+
+const guidesDir = attacksGuidesDir();
+---
+
+<AppShell title={`${attack.title} · Guide`} heading={attack.title} subheading={attack.tactic}>
+	<p class="mb-6 text-sm text-zinc-400">
+		<a class="text-sky-400 hover:text-sky-300 hover:underline" href="/attacks">← All attacks</a>
+		<span class="mx-2 text-zinc-600">·</span>
+		<a class="text-amber-400 hover:text-amber-300 hover:underline" href={attack.labPath}>Open lab</a>
+		<span class="mx-2 text-zinc-600">·</span>
+		Guide: <code class="text-zinc-300">docs/docs/wa101/attacks/{attack.guideFile}</code>
+	</p>
+
+	{
+		loadError ? (
+			<p class="rounded-lg border border-rose-500/30 bg-rose-950/40 px-4 py-3 text-sm text-rose-200">
+				Could not load guide at <code class="text-rose-100">{guidePath}</code>
+				<br />
+				<span class="mt-2 block text-rose-200/80">{loadError}</span>
+				<span class="mt-2 block text-xs">
+					Set <code>ATTACKS_GUIDES_DIR</code> (Docker: <code>{guidesDir}</code>).
+				</span>
+			</p>
+		) : (
+			<article class="guide-content max-w-3xl" set:html={html} />
+		)
+	}
+</AppShell>
