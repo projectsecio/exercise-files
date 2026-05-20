@@ -1,0 +1,80 @@
+---
+import AppShell from '../layouts/AppShell.astro';
+import { inputClass, cardClass } from '../lib/ui';
+import LabFlag from '../components/LabFlag.astro';
+import { LAB_FLAGS, detectIdor } from '../lib/lab/flags';
+import { getDocumentById } from '../lib/lab/idor';
+
+const username = Astro.locals.username ?? 'analyst';
+const idParam = Astro.url.searchParams.get('id') ?? '1001';
+const docId = Number.parseInt(idParam, 10);
+const doc = Number.isFinite(docId) ? await getDocumentById(docId) : null;
+const labFlag = detectIdor(doc, username) ? LAB_FLAGS.idor : null;
+---
+
+<AppShell title="Documents · Threat Intel" heading="Internal documents">
+  {labFlag && <LabFlag message={labFlag} />}
+  <p class="mb-6 max-w-2xl text-sm text-zinc-400">
+    Analyst memos and operational records. Open by reference number or from your recent list.
+  </p>
+
+  <div class="grid gap-6 lg:grid-cols-[240px_1fr]">
+    <aside class={cardClass}>
+      <h2 class="text-sm font-medium text-zinc-200">Recent</h2>
+      <ul class="mt-3 space-y-2 text-sm">
+        <li>
+          <a
+            class:list={[
+              'text-sky-400 hover:underline',
+              docId === 1001 && 'font-medium',
+            ]}
+            href="/documents?id=1001"
+          >
+            Shift notes
+          </a>
+          <span class="block text-xs text-zinc-500">Ref 1001 · You</span>
+        </li>
+      </ul>
+    </aside>
+
+    <section class={cardClass}>
+      <form class="mb-6 flex max-w-md gap-2" method="get">
+        <label class="sr-only" for="ref">Reference number</label>
+        <input
+          class={inputClass}
+          id="ref"
+          name="id"
+          type="text"
+          inputmode="numeric"
+          value={idParam}
+          placeholder="Reference #"
+        />
+        <button
+          type="submit"
+          class="shrink-0 rounded-lg bg-sky-600 px-4 py-2 text-sm text-white hover:bg-sky-500"
+        >
+          Open
+        </button>
+      </form>
+
+      {
+        doc ? (
+          <article>
+            {doc.confidential && (
+              <span class="mb-2 inline-block rounded-full border border-zinc-600 bg-zinc-800/80 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-300">
+                Restricted
+              </span>
+            )}
+            <h3 class="text-lg font-medium text-zinc-100">{doc.title}</h3>
+            <p class="mt-1 text-xs text-zinc-500">
+              Ref {doc.id} · {doc.owner_username}
+            </p>
+            <p class="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">{doc.body}</p>
+          </article>
+        ) : (
+          <p class="text-sm text-zinc-500">No document found for that reference.</p>
+        )
+      }
+    </section>
+  </div>
+</AppShell>

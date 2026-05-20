@@ -8,7 +8,7 @@ Built with **Astro 5**, **@astrojs/node** (standalone SSR), **React** (ECharts c
 
 ## Prerequisites
 
-- **Node.js 22** (matches `.github/workflows/deploy-ec2.yml` and recommended EC2 runtime)
+- **Node.js 22** (matches `.github/workflows/deploy-fly.yml` and local dev)
 - **PostgreSQL** with `dashboard.panel_feed` populated (CA101/WA101 Lambda ingest path)
 - Panel data from **`public-threat-intelligence-feed-parser`** and optional **`private-db-threat-intelligence-feed-pull`**
 
@@ -42,7 +42,7 @@ DB_SSLMODE=require
 | `DB_PASSWORD` | Database password |
 | `DB_SSLMODE` | `require` (default) or `disable` for local/lab Postgres without TLS |
 
-Production on EC2: the same `.env` lives next to the app (see `systemd/threat-intel-dashboard.service`). GitHub Actions deploy does **not** copy `.env`; configure it once on the server.
+Production on **Fly.io**: set the same variables with `fly secrets set` (see WA101 `personal_project_deploy.md`). GitHub Actions does **not** copy `.env`. Legacy EC2: use `systemd/threat-intel-dashboard.service` and a server-side `.env`.
 
 | Command | Action |
 |---------|--------|
@@ -56,7 +56,9 @@ Production on EC2: the same `.env` lives next to the app (see `systemd/threat-in
 
 ```text
 complete-threat-intel-app/
-├── .github/workflows/deploy-ec2.yml   # CI: build → rsync → restart systemd
+├── .github/workflows/deploy-fly.yml   # CI: build → flyctl deploy
+├── Dockerfile / fly.toml              # Fly.io container deploy
+├── .github/workflows/deploy-ec2.yml   # Legacy: build → rsync → systemd
 ├── src/
 │   ├── pages/
 │   │   ├── index.astro                # Main dashboard (panels, layout, colors)
@@ -248,13 +250,14 @@ Match field names to what your Lambda module emits so templates and charts can r
 
 | Topic | Location |
 |-------|----------|
-| GitHub Actions CI/CD | `.github/workflows/deploy-ec2.yml` — push to `main` builds and rsyncs to EC2 |
-| Process manager | `systemd/threat-intel-dashboard.service` — runs `node dist/server/entry.mjs` on port **4321** |
-| Course deploy guide | WA101 **deploy** and **implement GitHub CI/CD** docs |
+| GitHub Actions CI/CD | `.github/workflows/deploy-fly.yml` — push to `main` builds and deploys to Fly.io |
+| Fly secrets | `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSLMODE` via `fly secrets set` |
+| Legacy EC2 | `deploy-ec2.yml` + `systemd/threat-intel-dashboard.service` on port **4321** |
+| Course deploy guides | WA101 **personal_project_deploy.md** (Fly + Neon) and **implement_github_ci_cd.md** |
 
-**Secrets for Actions:** `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`, `DEPLOY_PATH` (e.g. `/home/ubuntu/complete-threat-intelligence-dashboard`).
+**GitHub secret for Fly:** `FLY_API_TOKEN` (deploy token from `fly tokens create deploy`).
 
-To serve on **port 80** without `:4321`, put **nginx** (or another reverse proxy) in front of the Node process—covered in the deploy guide.
+**Legacy EC2 secrets:** `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`, `DEPLOY_PATH`.
 
 ---
 

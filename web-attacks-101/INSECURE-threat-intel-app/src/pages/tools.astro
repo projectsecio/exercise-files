@@ -1,0 +1,63 @@
+---
+import AppShell from '../layouts/AppShell.astro';
+import { inputClass, cardClass } from '../lib/ui';
+import LabFlag from '../components/LabFlag.astro';
+import { LAB_FLAGS, detectCommandInjection } from '../lib/lab/flags';
+import { unsafePing } from '../lib/lab/cmd';
+
+const host = Astro.url.searchParams.get('host') ?? '';
+let output: string | null = null;
+let cmdError: string | null = null;
+let labFlag: string | null = null;
+
+if (host) {
+  try {
+    output = await unsafePing(host);
+    if (output && detectCommandInjection(output)) labFlag = LAB_FLAGS.cmd;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Check failed';
+    cmdError = message;
+    if (detectCommandInjection(message)) labFlag = LAB_FLAGS.cmd;
+  }
+}
+---
+
+<AppShell title="Tools · Threat Intel" heading="Operations tools">
+  {labFlag && <LabFlag message={labFlag} />}
+  <p class="mb-6 max-w-2xl text-sm text-zinc-400">
+    Utilities for feed operators — validate connectivity before onboarding a new ingestion endpoint.
+  </p>
+
+  <section class={cardClass}>
+    <h2 class="text-[15px] font-medium text-zinc-100">Feed endpoint reachability</h2>
+    <p class="mt-1 text-xs text-zinc-500">
+      ICMP check against a collector or broker hostname before enabling scheduled pulls.
+    </p>
+    <form class="mt-4 flex flex-col gap-2 sm:flex-row" method="get">
+      <input
+        class:list={[inputClass, 'font-mono']}
+        name="host"
+        type="text"
+        value={host}
+        placeholder="feed-collector.projectx.io"
+      />
+      <button
+        type="submit"
+        class="shrink-0 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+      >
+        Run check
+      </button>
+    </form>
+
+    {cmdError && (
+      <pre class="mt-4 overflow-x-auto rounded-lg border border-rose-500/20 bg-black/30 p-4 text-xs text-rose-200">
+        {cmdError}
+      </pre>
+    )}
+    {output && (
+      <pre class="mt-4 overflow-x-auto rounded-lg border border-white/[0.08] bg-black/40 p-4 text-xs text-zinc-300">
+        {output}
+      </pre>
+    )}
+  </section>
+</AppShell>

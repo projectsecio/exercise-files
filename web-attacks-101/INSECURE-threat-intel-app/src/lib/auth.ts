@@ -73,10 +73,10 @@ export function getSessionFromRequest(request: Request): SessionPayload | null {
 export function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
   if (pathname.startsWith("/api/auth/")) return true;
+  if (pathname === "/api/internal/metadata") return true;
+  if (pathname === "/email-update.html") return true;
   if (pathname.startsWith("/_astro/")) return true;
   if (pathname.startsWith("/favicon")) return true;
-  if (pathname.startsWith("/lab/csrf-poc")) return true;
-  if (pathname === "/api/lab/metadata") return true;
   return false;
 }
 

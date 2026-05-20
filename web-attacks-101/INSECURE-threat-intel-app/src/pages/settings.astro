@@ -1,0 +1,53 @@
+---
+import AppShell from '../layouts/AppShell.astro';
+import { inputClass, cardClass } from '../lib/ui';
+import LabFlag from '../components/LabFlag.astro';
+import { LAB_FLAGS, detectCsrfEmail } from '../lib/lab/flags';
+import { getProfile } from '../lib/lab/csrf';
+
+const username = Astro.locals.username ?? 'analyst';
+const message = Astro.url.searchParams.get('updated')
+  ? 'Profile saved.'
+  : Astro.url.searchParams.get('error')
+    ? 'Enter a valid email address.'
+    : null;
+
+const profile = await getProfile(username);
+const labFlag =
+  profile && detectCsrfEmail(profile.email) ? LAB_FLAGS.csrf : null;
+---
+
+<AppShell title="Settings · Threat Intel" heading="Account settings">
+  {labFlag && <LabFlag message={labFlag} />}
+  <section class:list={[cardClass, 'max-w-lg']}>
+    <h2 class="text-[15px] font-medium text-zinc-100">Profile</h2>
+    {profile && (
+      <dl class="mt-4 space-y-3 text-sm">
+        <div>
+          <dt class="text-xs text-zinc-500">Display name</dt>
+          <dd class="text-zinc-200">{profile.display_name}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-zinc-500">Username</dt>
+          <dd class="font-mono text-zinc-300">{profile.username}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-zinc-500">Notification email</dt>
+          <dd class="font-mono text-sky-300">{profile.email}</dd>
+        </div>
+      </dl>
+    )}
+    {message && <p class="mt-4 text-sm text-emerald-300">{message}</p>}
+
+    <form class="mt-6 space-y-3 border-t border-white/[0.06] pt-6" method="post" action="/api/settings/email">
+      <label class="block text-xs text-zinc-500" for="email">Update notification email</label>
+      <input class={inputClass} id="email" name="email" type="email" required />
+      <button
+        type="submit"
+        class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+      >
+        Save
+      </button>
+    </form>
+  </section>
+</AppShell>

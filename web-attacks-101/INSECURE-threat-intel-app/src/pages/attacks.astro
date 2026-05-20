@@ -4,15 +4,11 @@ import { ATTACK_SCENARIOS } from '../lib/attacks';
 import AttacksGrid from '../components/attacks/AttacksGrid';
 ---
 
-<AppShell title="Attacks · INSECURE Threat Intel" heading="Attack scenarios">
+<AppShell title="Field notes · Threat Intel" heading="Field notes">
   <p class="mb-8 max-w-2xl text-sm text-zinc-400">
-    Six <strong class="font-medium text-zinc-300">Web &amp; Attacks 101</strong> application attack
-    labs (SQLi, XSS, IDOR, CSRF, SSRF, command injection). Use <strong
-      class="font-medium text-amber-200">Open lab</strong
-    > on each card (or <a class="text-amber-400 hover:underline" href="/lab">Vuln lab</a> in the nav).
-    Course guides live in <code class="text-zinc-300">docs/docs/wa101/attacks/</code> — <strong
-      class="font-medium text-zinc-300">View guide</strong
-    > and <strong class="font-medium text-zinc-300">Open notes</strong> for write-ups.
+    Document findings from your assessment. Course walkthroughs and methodology live in the hosted
+    WA101 docs — use <strong class="font-medium text-zinc-300">Open notes</strong> below to record
+    what you discover in the application.
   </p>
   <AttacksGrid client:load attacks={ATTACK_SCENARIOS} />
 </AppShell>

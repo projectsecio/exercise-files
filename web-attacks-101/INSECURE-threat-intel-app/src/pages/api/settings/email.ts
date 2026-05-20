@@ -1,9 +1,8 @@
 import type { APIRoute } from "astro";
-import { updateEmail } from "../../../../lib/lab/csrf";
+import { updateEmail } from "../../../lib/lab/csrf";
 
 export const prerender = false;
 
-/** INTENTIONALLY VULNERABLE — no CSRF token; session cookie only. */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const username = locals.username;
   if (!username) {
@@ -21,9 +20,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   }
 
   if (!email) {
-    return redirect("/lab/csrf?error=missing", 302);
+    return redirect("/settings?error=missing", 302);
   }
 
   await updateEmail(username, email);
-  return redirect("/lab/csrf?updated=1", 302);
+  return redirect("/settings?updated=1", 302);
 };

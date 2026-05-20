@@ -4,7 +4,7 @@ Local-only fork of the WA101 threat intelligence dashboard for **Docker** develo
 
 - **Six synthetic feed panels** pre-seeded in PostgreSQL
 - **Session auth** (username/password from environment)
-- **Attacks** page for six **Web & Attacks 101** scenarios with **notes dialog**
+- **Field notes** page to document assessment findings per attack type
 
 > **Not for production.** Weak default credentials, no TLS, synthetic data. Production deployable app: **`complete-threat-intel-app`**.
 
@@ -22,61 +22,40 @@ Open **http://localhost:8080** → sign in:
 | Username | `analyst` |
 | Password | `projectx` |
 
-## WA101 attack guides (source of truth)
+## Application areas
 
-Guides live in the **course docs**, not in this exercise folder:
+Vulnerabilities are embedded in normal product features (no separate lab UI):
 
-```text
-docs/docs/wa101/attacks/
-├── sql_injection.md
-├── cross_site_scripting.md
-├── idor.md
-├── csrf.md
-├── ssrf.md
-└── command_injection.md
-```
+| Feature | Location |
+|---------|----------|
+| SQL injection | **Marketplace** — catalog search, partner sign-in |
+| XSS | **Dashboard** — analyst collaboration thread |
+| IDOR | **Documents** — reference `?id=` |
+| CSRF | **Settings** — notification email update |
+| SSRF | **Dashboard** — remote feed validation (`feed_url`) |
+| Command injection | **Tools** — feed endpoint reachability check |
 
-Docker mounts that directory into the app at `/app/attack-guides`. In the UI: **Attacks** → **View guide**, or `/attacks/<slug>`.
+When you successfully exploit a vulnerability, a CTF-style banner appears at the top of the page (for example **Found SSRF**, **Found SQL Injection**).
 
-| Slug | Attack |
-|------|--------|
-| `sql_injection` | SQL Injection (SQLi) |
-| `cross_site_scripting` | Cross-Site Scripting (XSS) |
-| `idor` | Insecure Direct Object Reference |
-| `csrf` | Cross-Site Request Forgery (CSRF) |
-| `ssrf` | Server-Side Request Forgery (SSRF) |
-| `command_injection` | Command Injection |
-
-## Architecture
-
-```text
-Browser :8080  →  Astro SSR  →  PostgreSQL
-                      ↑
-              docs/docs/wa101/attacks (mounted read-only)
-```
+Course methodology and walkthroughs: **`docs/docs/wa101/attacks/`** (hosted docs, not mounted in the app).
 
 ## Commands
 
 | Command | Action |
 |---------|--------|
-| `npm run docker:up` | Build and start Postgres + app (`docker-compose`) |
+| `npm run docker:up` | Build and start Postgres + app |
 | `npm run docker:down` | Stop and remove volumes |
-
-If you see `unknown shorthand flag: 'f'`, use **`docker-compose`** (hyphen), not `docker compose` — see the Docker setup guide.
-| `npm run dev` | Local dev (set `.env` + `ATTACKS_GUIDES_DIR` to docs path) |
 
 ## Environment
 
 | Variable | Docker default | Purpose |
 |----------|----------------|---------|
-| `ATTACKS_GUIDES_DIR` | `/app/attack-guides` | WA101 markdown guides |
 | `AUTH_USERNAME` / `AUTH_PASSWORD` | `analyst` / `projectx` | Login |
 | `AUTH_SECRET` | (see compose) | Session signing |
 | `DB_*` | (see compose) | PostgreSQL |
 
 ## Related
 
-- **Docker setup guide:** `docs/docs/wa101/infra/Insecure - Build Local Docker Container With The Following Attacks/docker_container_setup.md`
+- **Docker setup:** `docs/docs/wa101/infra/Insecure - Build Local Docker Container With The Following Attacks/docker_container_setup.md`
 - **Burp basics:** `docs/docs/wa101/infra/Insecure - Build Local Docker Container With The Following Attacks/burp_suite_basics.md`
-- Attack guides: `docs/docs/wa101/attacks/`
 - Production dashboard: `../complete-threat-intel-app`

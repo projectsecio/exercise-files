@@ -11,6 +11,25 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
+# Preflight: fail fast with WSL/Desktop guidance when the daemon is unreachable.
+if ! docker info >/dev/null 2>&1; then
+  echo "Error: Docker daemon is not reachable (docker info failed)." >&2
+  if grep -qi microsoft /proc/version 2>/dev/null; then
+    echo "" >&2
+    echo "WSL + Docker Desktop: apt docker.io often conflicts with Desktop." >&2
+    echo "  1. Start Docker Desktop on Windows." >&2
+    echo "  2. Settings → Resources → WSL integration → enable this distro." >&2
+    echo "  3. Stop native Docker in WSL (then restart Docker Desktop):" >&2
+    echo "       sudo systemctl stop docker" >&2
+    echo "       sudo systemctl disable docker" >&2
+    echo "  4. Verify: docker version  (must show Client AND Server)" >&2
+    echo "" >&2
+    echo "Or run the lab from PowerShell (where Docker Desktop works):" >&2
+    echo "  docker compose -f docker/docker-compose.yml up --build" >&2
+  fi
+  exit 1
+fi
+
 if docker compose version >/dev/null 2>&1; then
   exec docker compose -f "$COMPOSE_FILE" "$@"
 fi

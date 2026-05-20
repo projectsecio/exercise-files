@@ -1,0 +1,18 @@
+# WA101 — Neon / Fly.io (preferred for portfolio deploy)
+export NEON_DATABASE_URL='postgresql://webapp_rw:PASSWORD@ep-xxxx.region.aws.neon.tech/projectxdb?sslmode=require'
+
+# Or discrete variables:
+# export DB_HOST='ep-xxxx.region.aws.neon.tech'
+# export DB_NAME='projectxdb'
+# export DB_USER='webapp_rw'
+# export DB_PASSWORD='PASSWORD'
+# export DB_PORT='5432'
+# export DB_SSLMODE='require'
+
+# CA101 EC2 lab (legacy — use cloud-attacks-101 copy for VPC-only deploy):
+# export EC2_ENDPOINT='10.0.x.x'
+# export EC2_DB_NAME='projectxdb'
+# export EC2_USERNAME='webapp_rw'
+# export EC2_PASSWORD='PASSWORD'
+# export EC2_PORT='5432'
+# export EC2_SSLMODE='require'

@@ -24,11 +24,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      # WA101 attack guides (source of truth in course docs)
-      - ../../../../docs/docs/wa101/attacks:/app/attack-guides:ro
     environment:
-      ATTACKS_GUIDES_DIR: /app/attack-guides
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_NAME: threat_intel

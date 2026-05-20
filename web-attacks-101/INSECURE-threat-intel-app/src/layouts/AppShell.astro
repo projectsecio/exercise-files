@@ -7,8 +7,17 @@ interface Props {
   subheading?: string;
 }
 
-const { title, heading, subheading = 'Threat intelligence · local lab' } = Astro.props;
+const { title, heading, subheading = 'Threat intelligence platform' } = Astro.props;
 const username = Astro.locals.username;
+
+const nav = [
+  { href: '/', label: 'Dashboard', match: (p: string) => p === '/' },
+  { href: '/marketplace', label: 'Marketplace', match: (p: string) => p.startsWith('/marketplace') },
+  { href: '/documents', label: 'Documents', match: (p: string) => p.startsWith('/documents') },
+  { href: '/tools', label: 'Tools', match: (p: string) => p.startsWith('/tools') },
+  { href: '/settings', label: 'Settings', match: (p: string) => p.startsWith('/settings') },
+  { href: '/attacks', label: 'Field notes', match: (p: string) => p.startsWith('/attacks') },
+];
 ---
 
 <html lang="en">
@@ -33,31 +42,21 @@ const username = Astro.locals.username;
           </h1>
         </div>
         <nav class="flex flex-wrap items-center gap-4 text-sm" aria-label="Primary">
-          <a
-            class:list={[
-              'transition-colors',
-              Astro.url.pathname === '/' ? 'text-sky-300' : 'text-zinc-400 hover:text-sky-300',
-            ]}
-            href="/">Dashboard</a
-          >
-          <a
-            class:list={[
-              'transition-colors',
-              Astro.url.pathname.startsWith('/attacks')
-                ? 'text-sky-300'
-                : 'text-zinc-400 hover:text-sky-300',
-            ]}
-            href="/attacks">Attacks</a
-          >
-          <a
-            class:list={[
-              'transition-colors',
-              Astro.url.pathname.startsWith('/lab')
-                ? 'text-amber-300'
-                : 'text-zinc-400 hover:text-amber-300',
-            ]}
-            href="/lab">Vuln lab</a
-          >
+          {
+            nav.map((item) => (
+              <a
+                class:list={[
+                  'transition-colors',
+                  item.match(Astro.url.pathname)
+                    ? 'text-sky-300'
+                    : 'text-zinc-400 hover:text-sky-300',
+                ]}
+                href={item.href}
+              >
+                {item.label}
+              </a>
+            ))
+          }
           <span class="text-zinc-600">|</span>
           <span class="text-zinc-500">{username}</span>
           <form method="post" action="/api/auth/logout" class="inline">

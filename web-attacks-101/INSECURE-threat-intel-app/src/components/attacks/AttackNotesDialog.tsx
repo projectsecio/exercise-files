@@ -96,7 +96,7 @@ export default function AttackNotesDialog({ slug, title, open, onClose }: Props)
             className="mt-4 h-48 w-full resize-y rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none ring-sky-500/30 focus:ring-2"
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Document findings from the attack lab…"
+            placeholder="Document findings from your assessment…"
           />
         )}
 

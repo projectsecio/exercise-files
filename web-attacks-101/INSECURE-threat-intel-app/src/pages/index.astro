@@ -3,7 +3,44 @@ import AppShell from '../layouts/AppShell.astro';
 import { getDashboardPanels } from '../lib/db';
 import DomainsBarChart from '../components/charts/DomainsBarChart';
 import CountriesMapChart from '../components/charts/CountriesMapChart';
+import { inputClass, cardClass } from '../lib/ui';
+import LabFlag from '../components/LabFlag.astro';
+import { LAB_FLAGS, detectSsrfResponse, detectXssPayload } from '../lib/lab/flags';
+import { unsafeFetchUrl } from '../lib/lab/ssrf';
+import { addComment, listComments } from '../lib/lab/xss';
 
+const username = Astro.locals.username ?? 'guest';
+const feedUrl = Astro.url.searchParams.get('feed_url') ?? '';
+let feedResult: Awaited<ReturnType<typeof unsafeFetchUrl>> | null = null;
+let feedError: string | null = null;
+let discussionFlash: string | null = null;
+let labFlag: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (String(form.get('form') ?? '') === 'discussion') {
+    const body = String(form.get('body') ?? '').trim();
+    if (body) {
+      await addComment(username, body);
+      discussionFlash = 'Posted to team thread.';
+      if (detectXssPayload(body)) labFlag = LAB_FLAGS.xss;
+    }
+  }
+}
+
+if (feedUrl) {
+  try {
+    feedResult = await unsafeFetchUrl(feedUrl);
+    if (feedResult && detectSsrfResponse(feedResult.body)) labFlag = LAB_FLAGS.ssrf;
+  } catch (e) {
+    feedError = e instanceof Error ? e.message : 'Could not retrieve feed';
+  }
+}
+
+const comments = await listComments();
+if (!labFlag && comments.some((c) => detectXssPayload(c.body))) {
+  labFlag = LAB_FLAGS.xss;
+}
 const panels = await getDashboardPanels();
 
 const PANEL_DISPLAY_ORDER = [
@@ -56,13 +93,8 @@ function formatCollected(iso: string | null) {
 }
 ---
 
-<AppShell title="Dashboard · INSECURE Threat Intel" heading="Dashboard">
-	<p class="mb-6 text-sm text-amber-200/80">
-		Synthetic panel data (local Docker). Production course app: <code class="text-zinc-400"
-			>complete-threat-intel-app</code
-		>.
-	</p>
-
+<AppShell title="Dashboard · Threat Intel" heading="Dashboard">
+	{labFlag && <LabFlag message={labFlag} />}
 	<section class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-6 xl:gap-6">
 		{
 			orderedPanels.map((panel) => (
@@ -162,5 +194,76 @@ function formatCollected(iso: string | null) {
 				</article>
 			))
 		}
+	</section>
+
+	<section class="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
+		<article class={cardClass}>
+			<h2 class="text-[15px] font-medium text-zinc-100">Remote feed validation</h2>
+			<p class="mt-1 text-xs text-zinc-500">
+				Pull a sample response from a candidate RSS or JSON feed URL before adding it to ingestion.
+			</p>
+			<form class="mt-4 flex flex-col gap-2 sm:flex-row" method="get">
+				<input
+					class:list={[inputClass, 'font-mono text-xs sm:text-sm']}
+					name="feed_url"
+					type="url"
+					value={feedUrl}
+					placeholder="https://feeds.example.com/threat.xml"
+				/>
+				<button
+					type="submit"
+					class="shrink-0 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+				>
+					Validate
+				</button>
+			</form>
+			{feedError && <p class="mt-3 text-sm text-rose-300">{feedError}</p>}
+			{
+				feedResult && (
+					<div class="mt-4">
+						<p class="text-xs text-zinc-500">
+							HTTP {feedResult.status} · {feedResult.contentType}
+						</p>
+						<pre class="mt-2 max-h-48 overflow-auto rounded-lg border border-white/[0.08] bg-black/40 p-3 text-xs text-zinc-400">
+							{feedResult.body}
+						</pre>
+					</div>
+				)
+			}
+		</article>
+
+		<article class={cardClass}>
+			<h2 class="text-[15px] font-medium text-zinc-100">Analyst collaboration</h2>
+			<p class="mt-1 text-xs text-zinc-500">Share IOC context with the shift team.</p>
+			{discussionFlash && <p class="mt-3 text-sm text-emerald-300">{discussionFlash}</p>}
+			<form class="mt-4 space-y-3" method="post">
+				<input type="hidden" name="form" value="discussion" />
+				<textarea
+					class={inputClass}
+					name="body"
+					rows="2"
+					placeholder="Note a domain, hash, or TTP…"
+					required
+				/>
+				<button
+					type="submit"
+					class="rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-sm text-zinc-200 hover:bg-white/[0.08]"
+				>
+					Post
+				</button>
+			</form>
+			<ul class="mt-6 max-h-64 space-y-3 overflow-y-auto">
+				{
+					comments.slice(0, 8).map((c) => (
+						<li class="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2.5">
+							<p class="text-[10px] text-zinc-500">
+								{c.author} · {c.created_at}
+							</p>
+							<div class="mt-1 text-sm text-zinc-200" set:html={c.body} />
+						</li>
+					))
+				}
+			</ul>
+		</article>
 	</section>
 </AppShell>

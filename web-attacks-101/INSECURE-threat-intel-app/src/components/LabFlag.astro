@@ -1,0 +1,16 @@
+---
+interface Props {
+  message: string;
+}
+
+const { message } = Astro.props;
+---
+
+<div
+  class="mb-6 flex items-center gap-3 rounded-xl border border-amber-400/50 bg-amber-500/15 px-4 py-3 shadow-[0_0_24px_-4px_rgb(245_158_11_/_0.35)]"
+  role="status"
+  aria-live="polite"
+>
+  <span class="text-lg leading-none" aria-hidden="true">🚩</span>
+  <p class="font-mono text-sm font-semibold tracking-wide text-amber-100">{message}</p>
+</div>
