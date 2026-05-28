@@ -22,17 +22,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Install and build
-        run: |
-          npm ci
-          npm run build
-
       - name: Setup Flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
