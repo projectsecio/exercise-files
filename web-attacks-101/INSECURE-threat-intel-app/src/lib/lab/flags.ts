@@ -22,7 +22,7 @@ export function detectSqliSearch(
   return SQLI_INPUT.test(query);
 }
 
-/** Partner portal: login succeeds with SQL metacharacters in the username. */
+/** App sign-in: login succeeds with SQL metacharacters in the username. */
 export function detectSqliLogin(username: string, loggedIn: boolean): boolean {
   if (!loggedIn) return false;
   return SQLI_INPUT.test(username);
@@ -66,7 +66,7 @@ export function detectSsrfResponse(body: string): boolean {
   );
 }
 
-/** Command injection: extra shell output (e.g. id) in ping check response. */
+/** Command injection: extra shell output (e.g. id) in the artifact integrity-check response. */
 export function detectCommandInjection(output: string): boolean {
   return /\buid=\d+/.test(output) || /\bgid=\d+/.test(output) || /\bgroups=/.test(output);
 }

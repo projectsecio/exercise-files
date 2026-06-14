@@ -1,0 +1,88 @@
+# WA101 — INSECURE-threat-intel-app fronted by a ModSecurity + OWASP CRS WAF (local lab only)
+#
+# Same app + postgres as docker-compose.yml, but the plain nginx reverse proxy is
+# replaced by the official OWASP CRS image (nginx + ModSecurity v3 + Core Rule Set).
+# This lets you defend the SAME vulnerable app WITHOUT changing application code.
+#
+# Run it from the INSECURE-threat-intel-app directory:
+#   docker compose -f docker/docker-compose.waf.yml up --build
+#
+# Toggle detection vs blocking with MODSEC_RULE_ENGINE (see docker/waf/.env.waf.example):
+#   DetectionOnly  -> attacks succeed, but are LOGGED  (start here)
+#   On             -> matching attacks are BLOCKED with HTTP 403
+#   Off            -> WAF disabled (behaves like the plain nginx lab)
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: threat_intel
+      POSTGRES_PASSWORD: threat_intel
+      POSTGRES_DB: threat_intel
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U threat_intel -d threat_intel"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    expose:
+      - "4321"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: threat_intel
+      DB_USER: threat_intel
+      DB_PASSWORD: threat_intel
+      DB_SSLMODE: disable
+      AUTH_USERNAME: analyst
+      AUTH_PASSWORD: projectx
+      AUTH_SECRET: local-insecure-dev-secret-change-me
+      HOST: 0.0.0.0
+      PORT: "4321"
+      NODE_ENV: production
+
+  # ModSecurity v3 + OWASP Core Rule Set, fronting the app.
+  waf:
+    image: owasp/modsecurity-crs:nginx-alpine
+    ports:
+      - "8081:8080"
+    depends_on:
+      - app
+    environment:
+      # --- Where the WAF forwards clean traffic ---
+      BACKEND: "http://app:4321"
+      SERVER_NAME: "localhost"
+      PROXY_TIMEOUT: "60s"
+
+      # --- Rule engine mode (override in your shell or .env to flip lab modes) ---
+      MODSEC_RULE_ENGINE: "${MODSEC_RULE_ENGINE:-DetectionOnly}"
+
+      # --- CRS sensitivity (paranoia 1 = fewest false positives; good for a 101 lab) ---
+      PARANOIA: "1"
+      BLOCKING_PARANOIA: "1"
+      ANOMALY_INBOUND: "5"
+      ANOMALY_OUTBOUND: "4"
+
+      # --- Audit logging in JSON so Wazuh can parse it cleanly ---
+      MODSEC_AUDIT_ENGINE: "RelevantOnly"
+      MODSEC_AUDIT_LOG_FORMAT: "JSON"
+      MODSEC_AUDIT_LOG_TYPE: "Serial"
+      MODSEC_AUDIT_LOG: "/var/log/modsec/modsec_audit.log"
+
+      # Return a clear status when blocking so the lab result is obvious.
+      BLOCKING_STATUS: "403"
+    volumes:
+      # Audit log is written here so a Wazuh agent on the host can ingest it.
+      - ./waf/logs:/var/log/modsec
+
+volumes:
+  postgres_data:

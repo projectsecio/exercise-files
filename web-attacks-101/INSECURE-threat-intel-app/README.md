@@ -4,7 +4,6 @@ Local-only fork of the WA101 threat intelligence dashboard for **Docker** develo
 
 - **Six synthetic feed panels** pre-seeded in PostgreSQL
 - **Session auth** (username/password from environment)
-- **Field notes** page to document assessment findings per attack type
 
 > **Not for production.** Weak default credentials, no TLS, synthetic data. Production deployable app: **`complete-threat-intel-app`**.
 
@@ -15,7 +14,7 @@ cd exercise-files/web-attacks-101/INSECURE-threat-intel-app
 npm run docker:up
 ```
 
-Open **http://localhost:8080** → sign in:
+Open **http://localhost:8081** → sign in:
 
 | Field | Default |
 |-------|---------|
@@ -28,12 +27,12 @@ Vulnerabilities are embedded in normal product features (no separate lab UI):
 
 | Feature | Location |
 |---------|----------|
-| SQL injection | **Marketplace** — catalog search, partner sign-in |
-| XSS | **Dashboard** — analyst collaboration thread |
+| SQL injection | **Marketplace** — catalog search (`q`); **Sign-in** — `POST /api/auth/login` |
+| XSS | **Tools** — shift collaboration thread (case ref + shift note) |
 | IDOR | **Documents** — reference `?id=` |
 | CSRF | **Settings** — notification email update |
-| SSRF | **Dashboard** — remote feed validation (`feed_url`) |
-| Command injection | **Tools** — feed endpoint reachability check |
+| SSRF | **CTI reports** — uploaded SVG cover image whose embedded `<image href>` is resolved server-side (`cover_image`) |
+| Command injection | **Tools** — ingest artifact integrity check (`artifact` → `sha256sum`) |
 
 When you successfully exploit a vulnerability, a CTF-style banner appears at the top of the page (for example **Found SSRF**, **Found SQL Injection**).
 

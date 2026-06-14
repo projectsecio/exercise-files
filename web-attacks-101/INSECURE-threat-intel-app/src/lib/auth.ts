@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-export const SESSION_COOKIE = "insecure_ti_session";
+export const SESSION_COOKIE = "ti_session";
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 type SessionPayload = {
@@ -74,6 +74,8 @@ export function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
   if (pathname.startsWith("/api/auth/")) return true;
   if (pathname === "/api/internal/metadata") return true;
+  // Simulated cloud metadata service — no auth, just like a real IMDS endpoint.
+  if (pathname.startsWith("/latest/meta-data/")) return true;
   if (pathname === "/email-update.html") return true;
   if (pathname.startsWith("/_astro/")) return true;
   if (pathname.startsWith("/favicon")) return true;

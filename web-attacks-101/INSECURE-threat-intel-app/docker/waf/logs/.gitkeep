@@ -1,0 +1,2 @@
+# ModSecurity writes modsec_audit.log here (bind-mounted from the waf container).
+# This file just keeps the directory in version control.

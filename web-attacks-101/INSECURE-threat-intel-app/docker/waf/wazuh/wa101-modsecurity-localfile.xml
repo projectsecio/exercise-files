@@ -1,0 +1,17 @@
+<!--
+  WA101 — tell the Wazuh AGENT (running on the Docker host) to read the
+  ModSecurity JSON audit log produced by the waf container.
+
+  Add this <localfile> block inside the <ossec_config> section of the agent's
+  configuration, then restart the agent:
+
+    Linux : /var/ossec/etc/ossec.conf          (sudo systemctl restart wazuh-agent)
+    Windows: C:\Program Files (x86)\ossec-agent\ossec.conf  (Restart-Service WazuhSvc)
+
+  Point the <location> at the absolute path of docker/waf/logs/modsec_audit.log
+  on YOUR machine (the path below is an example).
+-->
+<localfile>
+  <log_format>json</log_format>
+  <location>/opt/INSECURE-threat-intel-app/docker/waf/logs/modsec_audit.log</location>
+</localfile>

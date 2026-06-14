@@ -18,7 +18,7 @@ export async function unsafeProductSearch(query: string): Promise<LabProduct[]> 
   return result.rows as LabProduct[];
 }
 
-/** INTENTIONALLY VULNERABLE — login bypass via SQLi on lab-only accounts table query. */
+/** INTENTIONALLY VULNERABLE — threat intel app login bypass via SQLi on lab_profiles. */
 export async function unsafeLabLogin(
   username: string,
   password: string

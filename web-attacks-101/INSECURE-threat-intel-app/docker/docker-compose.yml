@@ -19,8 +19,9 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    ports:
-      - "8080:4321"
+    # App port is internal only; reach it through the nginx proxy on :8081.
+    expose:
+      - "4321"
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,6 +38,15 @@ services:
       HOST: 0.0.0.0
       PORT: "4321"
       NODE_ENV: production
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8081:80"
+    depends_on:
+      - app
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
 volumes:
   postgres_data:

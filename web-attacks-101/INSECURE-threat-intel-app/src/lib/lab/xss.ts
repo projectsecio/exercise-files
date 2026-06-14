@@ -15,9 +15,21 @@ export async function listComments(): Promise<LabComment[]> {
   return result.rows as LabComment[];
 }
 
-export async function addComment(author: string, body: string): Promise<void> {
+/** Format a shift note; case ref is digits-only before being wrapped in HTML. */
+export function formatShiftNote(caseRef: string, body: string): string {
+  const ref = caseRef.replace(/\D/g, "");
+  if (!ref) return body;
+  return `<b>Case #${ref}</b><br>${body}`;
+}
+
+export async function addComment(
+  author: string,
+  caseRef: string,
+  body: string
+): Promise<void> {
+  const note = formatShiftNote(caseRef, body);
   await pool.query(
     `INSERT INTO dashboard.lab_comments (author, body) VALUES ($1, $2)`,
-    [author, body]
+    [author, note]
   );
 }

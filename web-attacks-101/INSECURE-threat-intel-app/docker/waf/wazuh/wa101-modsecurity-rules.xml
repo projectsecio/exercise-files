@@ -1,0 +1,70 @@
+<!--
+  WA101 — custom Wazuh rules for ModSecurity / OWASP CRS audit events.
+
+  Install on the Wazuh MANAGER, then restart the manager:
+    /var/ossec/etc/rules/local_rules.xml   (append the <group> below)
+    sudo systemctl restart wazuh-manager
+
+  How it works: the agent ships the JSON audit log, Wazuh's JSON decoder turns each
+  ModSecurity transaction into fields (transaction.client_ip, transaction.request.uri,
+  transaction.messages.message, ...). These rules raise readable alerts and map each
+  CRS rule family back to the matching WA101 attack.
+
+  Field names from the JSON decoder can vary slightly by Wazuh version — if a child
+  rule does not fire, check an alert in Discover and adjust the <field> name to match
+  what your manager actually decoded.
+-->
+<group name="modsecurity,wa101,web,attack,">
+
+  <!-- Base rule: any ModSecurity audit transaction reaches us as JSON. -->
+  <rule id="100200" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="transaction.client_ip">\.+</field>
+    <description>ModSecurity (WA101 WAF): request inspected by OWASP CRS.</description>
+  </rule>
+
+  <!-- Any request that tripped at least one CRS rule. -->
+  <rule id="100201" level="6">
+    <if_sid>100200</if_sid>
+    <field name="transaction.messages.message">\.+</field>
+    <description>ModSecurity (WA101 WAF): OWASP CRS rule matched on $(transaction.request.uri).</description>
+    <group>crs,</group>
+  </rule>
+
+  <!-- SQL Injection — CRS rule family 942xxx. -->
+  <rule id="100210" level="10">
+    <if_sid>100201</if_sid>
+    <field name="transaction.messages.message">SQL Injection|SQLi|942\d\d\d</field>
+    <description>WA101 SQL Injection blocked/detected by WAF from $(transaction.client_ip).</description>
+    <mitre><id>T1190</id></mitre>
+    <group>sqli,attack.web,</group>
+  </rule>
+
+  <!-- Cross-Site Scripting — CRS rule family 941xxx. -->
+  <rule id="100211" level="10">
+    <if_sid>100201</if_sid>
+    <field name="transaction.messages.message">XSS|Cross.Site Scripting|941\d\d\d</field>
+    <description>WA101 Cross-Site Scripting detected by WAF from $(transaction.client_ip).</description>
+    <mitre><id>T1059.007</id></mitre>
+    <group>xss,attack.web,</group>
+  </rule>
+
+  <!-- Command Injection / RCE — CRS rule family 932xxx. -->
+  <rule id="100212" level="12">
+    <if_sid>100201</if_sid>
+    <field name="transaction.messages.message">Remote Command Execution|OS Command|932\d\d\d</field>
+    <description>WA101 Command Injection detected by WAF from $(transaction.client_ip).</description>
+    <mitre><id>T1059</id></mitre>
+    <group>command_injection,attack.web,</group>
+  </rule>
+
+  <!-- SSRF / metadata probing — CRS rule family 934xxx (partial coverage). -->
+  <rule id="100213" level="10">
+    <if_sid>100201</if_sid>
+    <field name="transaction.messages.message">SSRF|169\.254\.169\.254|934\d\d\d</field>
+    <description>WA101 possible SSRF pattern detected by WAF from $(transaction.client_ip).</description>
+    <mitre><id>T1190</id></mitre>
+    <group>ssrf,attack.web,</group>
+  </rule>
+
+</group>

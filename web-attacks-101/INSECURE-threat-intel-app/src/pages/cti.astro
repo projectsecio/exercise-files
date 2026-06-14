@@ -1,0 +1,172 @@
+---
+import AppShell from '../layouts/AppShell.astro';
+import { inputClass, cardClass } from '../lib/ui';
+import LabFlag from '../components/LabFlag.astro';
+import { LAB_FLAGS, detectSsrfResponse } from '../lib/lab/flags';
+import { unsafeFetchUrl, extractImageExternalRefs } from '../lib/lab/ssrf';
+import { addReport, listReports, type CtiAvatar, type CtiExternalRef } from '../lib/lab/cti';
+
+const username = Astro.locals.username ?? 'analyst';
+
+let uploadFlash: string | null = null;
+let uploadError: string | null = null;
+let labFlag: string | null = null;
+
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const title = String(form.get('title') ?? '').trim();
+	const summary = String(form.get('summary') ?? '').trim();
+	const coverImage = form.get('cover_image');
+
+	let avatar: CtiAvatar = { kind: 'none' };
+	const externalRefs: CtiExternalRef[] = [];
+
+	if (coverImage instanceof File && coverImage.size > 0) {
+		const buf = Buffer.from(await coverImage.arrayBuffer());
+		const contentType = coverImage.type || 'application/octet-stream';
+		avatar = {
+			kind: 'file',
+			name: coverImage.name,
+			contentType,
+			dataUrl: `data:${contentType};base64,${buf.toString('base64')}`,
+		};
+
+		// "Process" the uploaded image: resolve any external resources referenced
+		// INSIDE it (e.g. an SVG <image href="…">). INTENTIONALLY VULNERABLE — the
+		// server fetches those URLs with no host/scheme validation (SSRF).
+		const refs = extractImageExternalRefs(buf.toString('utf8')).slice(0, 5);
+		for (const ref of refs) {
+			try {
+				const res = await unsafeFetchUrl(ref);
+				externalRefs.push({
+					url: ref,
+					ok: res.ok,
+					status: res.status,
+					contentType: res.contentType,
+					body: res.body,
+				});
+				if (detectSsrfResponse(res.body)) labFlag = LAB_FLAGS.ssrf;
+			} catch (e) {
+				externalRefs.push({
+					url: ref,
+					ok: false,
+					status: 0,
+					contentType: 'error',
+					body: e instanceof Error ? e.message : 'fetch failed',
+				});
+			}
+		}
+	}
+
+	if (!title) {
+		uploadError = 'A report title is required.';
+	} else {
+		addReport({ title, summary, author: username, avatar, externalRefs });
+		uploadFlash = 'CTI report published to the team feed.';
+	}
+}
+
+const reports = listReports();
+
+function isImage(contentType: string): boolean {
+	return contentType.toLowerCase().startsWith('image/');
+}
+---
+
+<AppShell title="CTI Reports · Threat Intel" heading="CTI reports">
+	{labFlag && <LabFlag message={labFlag} />}
+	<p class="mb-8 max-w-2xl text-sm text-zinc-400">
+		Publish a Cyber Threat Intelligence report to the shared team feed. Attach a cover image — the
+		server processes the upload (PNG, JPG, or SVG) and renders a preview for everyone.
+	</p>
+
+	<div class="grid gap-6 lg:grid-cols-[minmax(0,380px)_1fr]">
+		<article class={cardClass}>
+			<h2 class="text-[15px] font-medium text-zinc-100">Publish report</h2>
+			{uploadFlash && <p class="mt-3 text-sm text-emerald-300">{uploadFlash}</p>}
+			{uploadError && <p class="mt-3 text-sm text-rose-300">{uploadError}</p>}
+
+			<form class="mt-4 space-y-4" method="post" enctype="multipart/form-data">
+				<div>
+					<label class="mb-1 block text-xs text-zinc-400" for="title">Title</label>
+					<input class={inputClass} id="title" name="title" type="text" required placeholder="e.g. APT-Seabird infrastructure refresh" />
+				</div>
+
+				<div>
+					<label class="mb-1 block text-xs text-zinc-400" for="summary">Summary</label>
+					<textarea class={inputClass} id="summary" name="summary" rows="3" placeholder="Key findings, IOCs, confidence…"></textarea>
+				</div>
+
+				<div>
+					<label class="mb-1 block text-xs text-zinc-400" for="cover_image">Cover image</label>
+					<input
+						class="block w-full text-xs text-zinc-400 file:mr-3 file:rounded-md file:border-0 file:bg-white/[0.06] file:px-3 file:py-1.5 file:text-xs file:text-zinc-200 hover:file:bg-white/[0.1]"
+						id="cover_image"
+						name="cover_image"
+						type="file"
+						accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,.svg"
+					/>
+					<p class="mt-1 text-[11px] text-zinc-600">PNG, JPG, GIF, WebP, or SVG. Vector images are processed to resolve embedded assets.</p>
+				</div>
+
+				<button
+					type="submit"
+					class="w-full rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+				>
+					Publish to team feed
+				</button>
+			</form>
+		</article>
+
+		<section class="space-y-4">
+			<h2 class="text-[15px] font-medium text-zinc-100">Team feed</h2>
+			{
+				reports.map((report) => (
+					<article class={cardClass}>
+						<div class="flex items-start gap-4">
+							<div class="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/[0.08] bg-black/30">
+								{report.avatar.kind === 'file' && isImage(report.avatar.contentType) ? (
+									<img src={report.avatar.dataUrl} alt="" class="h-full w-full object-cover" />
+								) : (
+									<div class="flex h-full w-full items-center justify-center text-lg text-zinc-600">
+										CTI
+									</div>
+								)}
+							</div>
+							<div class="min-w-0 flex-1">
+								<h3 class="text-sm font-medium text-zinc-100">{report.title}</h3>
+								<p class="mt-0.5 text-[11px] text-zinc-500">
+									{report.author} · {report.createdAt}
+								</p>
+								{report.summary && (
+									<p class="mt-2 text-sm leading-relaxed text-zinc-300">{report.summary}</p>
+								)}
+
+								{report.externalRefs.length > 0 && (
+									<div class="mt-3 space-y-3">
+										<p class="text-[11px] uppercase tracking-wide text-zinc-500">
+											Embedded resources resolved while processing image
+										</p>
+										{report.externalRefs.map((ref) => (
+											<div class="rounded-lg border border-white/[0.08] bg-black/40 p-3">
+												<p class="text-[11px] text-zinc-500">
+													Fetched <span class="font-mono text-zinc-400">{ref.url}</span>
+												</p>
+												<p class="mt-1 text-[11px] text-zinc-500">
+													HTTP {ref.status} · {ref.contentType}
+												</p>
+												{!isImage(ref.contentType) && (
+													<pre class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-xs text-zinc-400">{ref.body}</pre>
+												)}
+											</div>
+										))}
+									</div>
+								)}
+							</div>
+						</div>
+					</article>
+				))
+			}
+		</section>
+	</div>
+</AppShell>
