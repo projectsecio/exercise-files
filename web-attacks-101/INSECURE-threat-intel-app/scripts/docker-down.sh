@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-exec "$(dirname "$0")/compose.sh" down -v
+exec bash "$(dirname "$0")/compose.sh" down -v
