@@ -35,7 +35,6 @@ Usage: sudo ./setup-ubuntu-role.sh <corp-svr|sec-box> [options]
 Options:
   --join                 Join corp.project-x-dc.com as this hostname
   --domain-password PWD  Administrator password (otherwise prompt)
-  --remove-source-user   Delete the cloned janed account
   -h, --help             Show this help
 
 corp-svr  hostname corp-svr   10.0.0.8    user project-x-admin   Docker
@@ -253,14 +252,22 @@ join_domain() {
 
 remove_source_user() {
   if ! id "$SOURCE_USER" >/dev/null 2>&1; then
+    log "${SOURCE_USER} is already gone"
     return 0
   fi
-  if [[ "${SUDO_USER:-}" == "$SOURCE_USER" ]]; then
-    echo "Still logged in as ${SOURCE_USER}. Log in as ${ROLE_USER}, then re-run with --remove-source-user."
+  gpasswd -d "$SOURCE_USER" sudo >/dev/null 2>&1 || true
+  passwd -l "$SOURCE_USER" >/dev/null 2>&1 || true
+  if [[ "${SUDO_USER:-}" != "$SOURCE_USER" ]] && userdel -r "$SOURCE_USER"; then
+    log "removed ${SOURCE_USER}"
     return 0
   fi
-  log "removing ${SOURCE_USER}"
-  userdel -r "$SOURCE_USER" 2>/dev/null || userdel "$SOURCE_USER"
+  # This script is usually started from janed's login, so the account is
+  # busy until that session ends. Finish the delete after we exit.
+  local cmd="sleep 3; pkill -KILL -u ${SOURCE_USER} || true; sleep 1; userdel -r ${SOURCE_USER} || userdel ${SOURCE_USER} || true"
+  if ! systemd-run --quiet --on-active=1s /bin/bash -c "$cmd"; then
+    nohup /bin/bash -c "$cmd" >/dev/null 2>&1 &
+  fi
+  log "removed ${SOURCE_USER} from sudo. The account is deleted when this login ends. Next login is ${ROLE_USER}."
 }
 
 set_hostname
@@ -279,9 +286,7 @@ if [[ "$DO_JOIN" -eq 1 ]]; then
   fi
 fi
 
-if [[ "$REMOVE_SOURCE" -eq 1 ]]; then
-  remove_source_user
-fi
+remove_source_user
 
 echo
 echo "Role:      ${ROLE}"

@@ -31,8 +31,4 @@ sudo ./setup-ubuntu-role.sh sec-box --join
 
 Use `corp-svr` for the corporate server. Running it again puts the VM back to these values.
 
-After the corporate server joins the domain, log in as `project-x-admin` and remove the cloned workstation account:
-
-```bash
-sudo ./setup-ubuntu-role.sh corp-svr --remove-source-user
-```
+The script deletes the cloned `janed` account after `sec-user` or `project-x-admin` exists. Log in as that account next. The desktop session you started as `janed` ends when the delete finishes.
