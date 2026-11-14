@@ -3,14 +3,13 @@
 # workstation on project-x-network. The source VM must be powered off.
 #
 #   .\clone-ubuntu-role.ps1 -Role sec-box
+#   .\clone-ubuntu-role.ps1 --role sec-box
 #   .\clone-ubuntu-role.ps1 -Role corp-svr -Source "[project-x-linux-client-test]" -Name "[project-x-corp-svr-test]"
 #
 # Then, on the clone, run setup-ubuntu-role.sh.
 
-[CmdletBinding()]
+[CmdletBinding(PositionalBinding = $false)]
 param(
-    [Parameter(Mandatory = $true)]
-    [ValidateSet("corp-svr", "sec-box")]
     [string]$Role,
 
     [string]$Source = "[project-x-linux-client]",
@@ -19,7 +18,11 @@ param(
 
     [string]$BaseFolder,
 
-    [switch]$DryRun
+    [switch]$DryRun,
+
+    # Bash-style flags, for example: --role sec-box
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$Remaining
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,6 +31,34 @@ function Fail {
     param([string]$Message)
     [Console]::Error.WriteLine("error: $Message")
     exit 1
+}
+
+$i = 0
+while ($i -lt $Remaining.Count) {
+    $token = $Remaining[$i]
+    if ($token -in @("--role", "-role", "--source", "-source", "--name", "-name", "--basefolder", "-basefolder")) {
+        if ($i + 1 -ge $Remaining.Count) { Fail "$token needs a value" }
+        $value = $Remaining[$i + 1]
+        if ($token -in @("--role", "-role")) { $Role = $value }
+        elseif ($token -in @("--source", "-source")) { $Source = $value }
+        elseif ($token -in @("--name", "-name")) { $Name = $value }
+        else { $BaseFolder = $value }
+        $i += 2
+        continue
+    }
+    if ($token -in @("--dry-run", "-dry-run", "-dryrun")) {
+        $DryRun = $true
+        $i += 1
+        continue
+    }
+    Fail "unknown argument: $token"
+}
+
+if (-not $Role) {
+    Fail "missing role. Example: .\clone-ubuntu-role.ps1 -Role sec-box"
+}
+if ($Role -notin @("corp-svr", "sec-box")) {
+    Fail "role must be corp-svr or sec-box, not '$Role'. To choose the VM name, add -Name. Example: .\clone-ubuntu-role.ps1 -Role sec-box -Name `"[project-x-sec-box-2]`""
 }
 
 if (-not $Name) {
@@ -55,7 +86,12 @@ function Get-VBoxField {
 }
 
 $VBox = Find-VBoxManage
-& $VBox showvminfo $Source | Out-Null
+$previousErrorAction = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+& $VBox showvminfo $Source --machinereadable 1>$null 2>$null
+$sourceFound = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = $previousErrorAction
+if (-not $sourceFound) { Fail "could not find $Source" }
 
 $state = Get-VBoxField -Vm $Source -Key "VMState"
 if ($state -ne "poweroff" -and $state -ne "aborted") {
