@@ -3,8 +3,9 @@
 # server VM. The clone gets a new MAC, so it does not collide with the
 # workstation on project-x-network. The source VM must be powered off.
 #
-#   ./clone-ubuntu-role.sh --role sec-box
-#   ./clone-ubuntu-role.sh --role corp-svr --source "[project-x-linux-client-test]" --name "[project-x-corp-svr-test]"
+#   ./clone-ubuntu-role.sh --role sec-box --name "[project-x-sec-box]"
+#   ./clone-ubuntu-role.sh --role corp-svr --name "[project-x-corp-svr]"
+#   ./clone-ubuntu-role.sh --help
 #
 # Then, on the clone, run setup-ubuntu-role.sh.
 
@@ -19,13 +20,27 @@ DRY_RUN=0
 usage() {
   cat <<'EOF'
 Usage: ./clone-ubuntu-role.sh --role <corp-svr|sec-box> [options]
+       .\clone-ubuntu-role.ps1 -Role <corp-svr|sec-box> [options]
+
+Clone [project-x-linux-client] into a corporate server or security server.
+The source virtual machine must be powered off. The clone gets a new MAC
+address and is placed beside the source VM, in whatever folder that VM uses.
+
+Security server, named [project-x-sec-box]:
+  ./clone-ubuntu-role.sh --role sec-box --name "[project-x-sec-box]"
+  .\clone-ubuntu-role.ps1 -Role sec-box -Name "[project-x-sec-box]"
+
+Corporate server, named [project-x-corp-svr]:
+  ./clone-ubuntu-role.sh --role corp-svr --name "[project-x-corp-svr]"
+  .\clone-ubuntu-role.ps1 -Role corp-svr -Name "[project-x-corp-svr]"
 
 Options:
-  --source NAME     Workstation VM to clone (default: [project-x-linux-client])
-  --name NAME       New VM name (default: [project-x-corp-svr] or [project-x-sec-box])
-  --basefolder PATH Directory that will contain the new VM folder
-  --dry-run         Print the clone and stop
-  -h, --help        Show this help
+  --role ROLE        corp-svr or sec-box
+  --source NAME      Workstation to clone. Default: [project-x-linux-client]
+  --name NAME        New VM name. Default: [project-x-corp-svr] or [project-x-sec-box]
+  --basefolder PATH  Directory that will contain the new VM folder
+  --dry-run          Print the plan and stop
+  -h, --help         Show this help
 EOF
 }
 

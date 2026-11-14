@@ -13,13 +13,17 @@ The domain controller at `10.0.0.5` has to be running before `--join`. The scrip
 
 ## Host
 
-Power off the workstation, then:
+Power off `[project-x-linux-client]`, then name the clone `[project-x-sec-box]`:
 
 ```powershell
-.\clone-ubuntu-role.ps1 -Role sec-box
+.\clone-ubuntu-role.ps1 -Role sec-box -Name "[project-x-sec-box]"
 ```
 
-From WSL or Linux, `./clone-ubuntu-role.sh --role sec-box` does the same clone. Add `-DryRun` or `--dry-run` to print the plan.
+```bash
+./clone-ubuntu-role.sh --role sec-box --name "[project-x-sec-box]"
+```
+
+`.\clone-ubuntu-role.ps1 -Help` and `./clone-ubuntu-role.sh --help` print both roles. The clone is placed beside the workstation, so the folder follows whatever machine you are on. Add `-DryRun` or `--dry-run` to print the plan.
 
 ## Guest
 

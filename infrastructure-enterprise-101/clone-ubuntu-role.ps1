@@ -2,9 +2,10 @@
 # server VM. The clone gets a new MAC, so it does not collide with the
 # workstation on project-x-network. The source VM must be powered off.
 #
-#   .\clone-ubuntu-role.ps1 -Role sec-box
-#   .\clone-ubuntu-role.ps1 --role sec-box
-#   .\clone-ubuntu-role.ps1 -Role corp-svr -Source "[project-x-linux-client-test]" -Name "[project-x-corp-svr-test]"
+#   .\clone-ubuntu-role.ps1 -Role sec-box -Name "[project-x-sec-box]"
+#   .\clone-ubuntu-role.ps1 --role sec-box --name "[project-x-sec-box]"
+#   .\clone-ubuntu-role.ps1 -Role corp-svr -Name "[project-x-corp-svr]"
+#   .\clone-ubuntu-role.ps1 -Help
 #
 # Then, on the clone, run setup-ubuntu-role.sh.
 
@@ -20,7 +21,10 @@ param(
 
     [switch]$DryRun,
 
-    # Bash-style flags, for example: --role sec-box
+    [Alias("h")]
+    [switch]$Help,
+
+    # Bash-style flags, for example: --role sec-box --name "[project-x-sec-box]"
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$Remaining
 )
@@ -31,6 +35,34 @@ function Fail {
     param([string]$Message)
     [Console]::Error.WriteLine("error: $Message")
     exit 1
+}
+
+function Show-Usage {
+    Write-Output @"
+Usage: .\clone-ubuntu-role.ps1 -Role <corp-svr|sec-box> [options]
+       ./clone-ubuntu-role.sh --role <corp-svr|sec-box> [options]
+
+Clone [project-x-linux-client] into a corporate server or security server.
+The source virtual machine must be powered off. The clone gets a new MAC
+address and is placed beside the source VM, in whatever folder that VM uses.
+
+Security server, named [project-x-sec-box]:
+  .\clone-ubuntu-role.ps1 -Role sec-box -Name "[project-x-sec-box]"
+  ./clone-ubuntu-role.sh --role sec-box --name "[project-x-sec-box]"
+
+Corporate server, named [project-x-corp-svr]:
+  .\clone-ubuntu-role.ps1 -Role corp-svr -Name "[project-x-corp-svr]"
+  ./clone-ubuntu-role.sh --role corp-svr --name "[project-x-corp-svr]"
+
+Options:
+  -Role, --role            corp-svr or sec-box
+  -Source, --source        Workstation to clone. Default: [project-x-linux-client]
+  -Name, --name            New VM name. Default: [project-x-corp-svr] or [project-x-sec-box]
+  -BaseFolder, --basefolder
+                           Directory that will contain the new VM folder
+  -DryRun, --dry-run       Print the plan and stop
+  -Help, --help            Show this help
+"@
 }
 
 $i = 0
@@ -51,14 +83,26 @@ while ($i -lt $Remaining.Count) {
         $i += 1
         continue
     }
+    if ($token -in @("--help", "-help", "-h", "--h")) {
+        $Help = $true
+        $i += 1
+        continue
+    }
     Fail "unknown argument: $token"
 }
 
+if ($Help) {
+    Show-Usage
+    exit 0
+}
+
 if (-not $Role) {
-    Fail "missing role. Example: .\clone-ubuntu-role.ps1 -Role sec-box"
+    Show-Usage
+    Fail "missing role. Example: .\clone-ubuntu-role.ps1 -Role sec-box -Name `"[project-x-sec-box]`""
 }
 if ($Role -notin @("corp-svr", "sec-box")) {
-    Fail "role must be corp-svr or sec-box, not '$Role'. To choose the VM name, add -Name. Example: .\clone-ubuntu-role.ps1 -Role sec-box -Name `"[project-x-sec-box-2]`""
+    Show-Usage
+    Fail "role must be corp-svr or sec-box, not '$Role'. The VM name is -Name, for example `"[project-x-sec-box]`"."
 }
 
 if (-not $Name) {
