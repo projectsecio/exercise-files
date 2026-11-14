@@ -39,7 +39,7 @@ Options:
   -h, --help             Show this help
 
 corp-svr  hostname corp-svr   10.0.0.8    user project-x-admin   Docker
-sec-box   hostname sec-box    10.0.0.10   user sec-work
+sec-box   hostname sec-box    10.0.0.10   user sec-user
 EOF
 }
 
@@ -91,7 +91,7 @@ case "$ROLE" in
   sec-box)
     HOSTNAME_VALUE="sec-box"
     ADDRESS="10.0.0.10"
-    ROLE_USER="sec-work"
+    ROLE_USER="sec-user"
     INSTALL_DOCKER=0
     ;;
 esac

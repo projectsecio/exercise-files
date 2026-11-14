@@ -5,7 +5,7 @@
 | Role | VM | Hostname | Address | Account | Extra |
 | --- | --- | --- | --- | --- | --- |
 | `corp-svr` | `[project-x-corp-svr]` | `corp-svr` | `10.0.0.8/24` | `project-x-admin` | Docker |
-| `sec-box` | `[project-x-sec-box]` | `sec-box` | `10.0.0.10/24` | `sec-work` | |
+| `sec-box` | `[project-x-sec-box]` | `sec-box` | `10.0.0.10/24` | `sec-user` | |
 
 Account password defaults to `@password123!`. Override it with `LAB_USER_PASSWORD`.
 
